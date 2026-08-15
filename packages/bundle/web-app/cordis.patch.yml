@@ -100,6 +100,11 @@
     - id: skill-manager
       name: '@deepseek-ai/dsh-skill-manager'
 
+    # Skill Plaza: browse/search/install popular GitHub skills into the user
+    # skill root (curated bilingual index + auto-discovered repositories).
+    - id: skill-plaza
+      name: '@deepseek-ai/dsh-skill-plaza'
+
     # The API gateway: the transport-agnostic dispatch face every client shape
     # shares. The base layer's agent-default-model service owns the default model.
     - id: api-gateway
@@ -204,6 +209,10 @@
     # Settings → Skills: browse and toggle every skill the host resolves.
     - id: ui-settings-skill-manager
       name: '@deepseek-ai/dsh-client-ui-settings-skill-manager'
+
+    # Settings → Skill Plaza: browse, search, and install GitHub skills.
+    - id: ui-settings-skill-plaza
+      name: '@deepseek-ai/dsh-client-ui-settings-skill-plaza'
 
     - id: ui-conversation
       name: '@deepseek-ai/dsh-client-ui-conversation'

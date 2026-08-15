@@ -2798,6 +2798,15 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       }),
       setEnabled: request => ok(request, {}),
     },
+    plaza: {
+      list: request => ok(request, {
+        skills: [
+          { id: 'fixture-plaza-demo', name: 'fixture-plaza-demo', nameZh: '广场示例技能', description: 'fixture 广场样本', descriptionZh: '仅供 UI 广场渲染验收', repo: 'fixture/repo', path: 'skills/fixture-plaza-demo', ref: 'main', stars: 1234, source: 'curated', installed: false },
+        ],
+      }),
+      install: request => ok(request, { id: request.payload.id, name: 'fixture-plaza-demo' }),
+      refresh: request => ok(request, {}),
+    },
     goals: {
       // Compatibility face only: old API Proxy payloads and acknowledgements
       // adapt to the canonical fixture Remote implementation above.
@@ -3117,6 +3126,9 @@ export class FixtureApiClient extends AbstractApiClient {
       case 'skill.list': return this.api.skills.list(request)
       case 'skillManager.list': return this.api.skillManager.list(request)
       case 'skillManager.setEnabled': return this.api.skillManager.setEnabled(request)
+      case 'plaza.list': return this.api.plaza.list(request)
+      case 'plaza.install': return this.api.plaza.install(request)
+      case 'plaza.refresh': return this.api.plaza.refresh(request)
       case 'agentPreset.list': return this.api.agentPresets.list(request)
       case 'agentPreset.select': return this.api.agentPresets.select(request)
       case 'agentPreset.read': return this.api.agentPresets.read(request)

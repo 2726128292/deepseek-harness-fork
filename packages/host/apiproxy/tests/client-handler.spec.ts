@@ -23,6 +23,7 @@ function scriptedApi(overrides: {
   host?: Partial<ApiProxy['host']>
   skills?: Partial<ApiProxy['skills']>
   skillManager?: Partial<ApiProxy['skillManager']>
+  plaza?: Partial<ApiProxy['plaza']>
   agentPresets?: Partial<ApiProxy['agentPresets']>
   events?: Partial<ApiProxy['events']>
   goals?: Partial<ApiProxy['goals']>
@@ -95,6 +96,12 @@ function scriptedApi(overrides: {
       list: r => ok(r, { skills: [] }),
       setEnabled: r => ok(r, {}),
       ...overrides.skillManager,
+    },
+    plaza: {
+      list: r => ok(r, { skills: [] }),
+      install: r => ok(r, { id: r.payload.id, name: 'stub' }),
+      refresh: r => ok(r, {}),
+      ...overrides.plaza,
     },
     agentPresets: {
       list: r => ok(r, { presets: [], authorable: false, hasDocument: false }),

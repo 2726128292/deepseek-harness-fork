@@ -49,6 +49,11 @@ import {
   skillManagerSetEnabledRequestSchema,
 } from '../api/skill-manager.schema.ts'
 import {
+  plazaInstallRequestSchema,
+  plazaListRequestSchema,
+  plazaRefreshRequestSchema,
+} from '../api/plaza.schema.ts'
+import {
   agentPresetCopyRequestSchema, agentPresetListRequestSchema, agentPresetOpenDocumentRequestSchema,
   agentPresetReadRequestSchema, agentPresetRemoveRequestSchema, agentPresetSelectRequestSchema,
 } from '../api/agent-presets.schema.ts'
@@ -123,6 +128,9 @@ const UNARY_ROUTES: UnaryRoutes = {
   'skill.list': { schema: skillListRequestSchema, invoke: (api, r) => api.skills.list(r) },
   'skillManager.list': { schema: skillManagerListRequestSchema, invoke: (api, r) => api.skillManager.list(r) },
   'skillManager.setEnabled': { schema: skillManagerSetEnabledRequestSchema, invoke: (api, r) => api.skillManager.setEnabled(r) },
+  'plaza.list': { schema: plazaListRequestSchema, invoke: (api, r) => api.plaza.list(r) },
+  'plaza.install': { schema: plazaInstallRequestSchema, invoke: (api, r) => api.plaza.install(r) },
+  'plaza.refresh': { schema: plazaRefreshRequestSchema, invoke: (api, r) => api.plaza.refresh(r) },
   'agentPreset.list': { schema: agentPresetListRequestSchema, invoke: (api, r) => api.agentPresets.list(r) },
   'agentPreset.select': { schema: agentPresetSelectRequestSchema, invoke: (api, r) => api.agentPresets.select(r) },
   'agentPreset.read': { schema: agentPresetReadRequestSchema, invoke: (api, r) => api.agentPresets.read(r) },

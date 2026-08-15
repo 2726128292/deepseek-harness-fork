@@ -231,6 +231,17 @@ function fakeApi(overrides: Partial<{ muxFrames: MuxFrame[]; hostFrames: HostFra
         return { rpcId: request.rpcId, result: { ok: true, value: {} } }
       },
     },
+    plaza: {
+      async list(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { skills: [] } } }
+      },
+      async install(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { id: request.payload.id, name: 'stub' } } }
+      },
+      async refresh(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: {} } }
+      },
+    },
     goals: {
       async create(request) {
         return { rpcId: request.rpcId, result: { ok: false, error: { code: 'internal', message: 'stub', details: {} } } }

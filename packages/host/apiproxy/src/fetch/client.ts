@@ -46,6 +46,11 @@ import {
   skillManagerSetEnabledValueSchema,
 } from '../api/skill-manager.schema.ts'
 import {
+  plazaInstallValueSchema,
+  plazaListValueSchema,
+  plazaRefreshValueSchema,
+} from '../api/plaza.schema.ts'
+import {
   agentPresetCopyValueSchema, agentPresetListValueSchema, agentPresetOpenDocumentValueSchema,
   agentPresetReadValueSchema, agentPresetRemoveValueSchema, agentPresetSelectValueSchema,
 } from '../api/agent-presets.schema.ts'
@@ -132,6 +137,11 @@ export interface IApiClient {
     list(payload: RequestPayload<'skillManager.list'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'skillManager.list'>>>
     setEnabled(payload: RequestPayload<'skillManager.setEnabled'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'skillManager.setEnabled'>>>
   }
+  plaza: {
+    list(payload: RequestPayload<'plaza.list'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'plaza.list'>>>
+    install(payload: RequestPayload<'plaza.install'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'plaza.install'>>>
+    refresh(payload: RequestPayload<'plaza.refresh'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'plaza.refresh'>>>
+  }
   agentPresets: {
     list(payload: RequestPayload<'agentPreset.list'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'agentPreset.list'>>>
     select(payload: RequestPayload<'agentPreset.select'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'agentPreset.select'>>>
@@ -209,6 +219,9 @@ const UNARY_VALUE_SCHEMAS: { [K in keyof RpcMethodMap]: z.ZodType<Wire<ResponseV
   'skill.list': skillListValueSchema,
   'skillManager.list': skillManagerListValueSchema,
   'skillManager.setEnabled': skillManagerSetEnabledValueSchema,
+  'plaza.list': plazaListValueSchema,
+  'plaza.install': plazaInstallValueSchema,
+  'plaza.refresh': plazaRefreshValueSchema,
   'agentPreset.list': agentPresetListValueSchema,
   'agentPreset.select': agentPresetSelectValueSchema,
   'agentPreset.read': agentPresetReadValueSchema,
@@ -470,6 +483,12 @@ export abstract class AbstractApiClient implements IApiClient {
   readonly skillManager: IApiClient['skillManager'] = {
     list: (payload, signal) => this.callUnary('skillManager.list', payload, signal),
     setEnabled: (payload, signal) => this.callUnary('skillManager.setEnabled', payload, signal),
+  }
+
+  readonly plaza: IApiClient['plaza'] = {
+    list: (payload, signal) => this.callUnary('plaza.list', payload, signal),
+    install: (payload, signal) => this.callUnary('plaza.install', payload, signal),
+    refresh: (payload, signal) => this.callUnary('plaza.refresh', payload, signal),
   }
 
   // Annotated like every sibling, and load-bearing rather than cosmetic:

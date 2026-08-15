@@ -10,6 +10,7 @@ import type { WorkspaceApi } from './workspace.ts'
 import type { AgentPresetsApi } from './agent-presets.ts'
 import type { SkillsApi } from './skills.ts'
 import type { SkillManagerApi } from './skill-manager.ts'
+import type { PlazaApi } from './plaza.ts'
 import type { GoalsApi } from './goals.ts'
 import type { SettingsApi } from './settings.ts'
 import type { CredentialsApi } from './credentials.ts'
@@ -54,6 +55,9 @@ export interface RpcMethodMap {
   'skill.list': SkillsApi['list']
   'skillManager.list': SkillManagerApi['list']
   'skillManager.setEnabled': SkillManagerApi['setEnabled']
+  'plaza.list': PlazaApi['list']
+  'plaza.install': PlazaApi['install']
+  'plaza.refresh': PlazaApi['refresh']
   'agentPreset.list': AgentPresetsApi['list']
   'agentPreset.select': AgentPresetsApi['select']
   'agentPreset.read': AgentPresetsApi['read']

@@ -110,6 +110,7 @@ import {
 } from '@deepseek-ai/dsh-api-remotes'
 import { canOpenNativePath, openNativePath, openNativeTextFile } from './native-path-opener.ts'
 import type { SkillManagerEntry } from './api/skill-manager.ts'
+import type { PlazaSkillEntry } from './api/plaza.ts'
 
 /** Page size when history is called without maxMessages. */
 const DEFAULT_MAX_MESSAGES = 50
@@ -118,6 +119,13 @@ const DEFAULT_MAX_MESSAGES = 50
 interface SkillManagerHostFace {
   list(): Promise<SkillManagerEntry[]>
   setEnabled(name: string, enabled: boolean): Promise<void>
+}
+
+/** Minimal structural face of the `ctx.plaza` service this proxy delegates to. */
+interface PlazaHostFace {
+  list(): Promise<PlazaSkillEntry[]>
+  install(id: string): Promise<{ id: string; name: string }>
+  refresh(): Promise<void>
 }
 
 /**
@@ -3300,6 +3308,62 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           return ok(request, {})
         } catch (error: unknown) {
           return err(request, { code: 'internal', message: `skill manager update failed: ${String(error)}`, details: {} })
+        }
+      },
+    },
+
+    // Session-free Skill Plaza surface: browse the merged curated +
+    // auto-discovered catalog, install skills into the user skill root, and
+    // force a catalog refresh. Delegates to the `plaza` service; an absent
+    // service means the host composition does not mount
+    // @deepseek-ai/dsh-skill-plaza.
+    plaza: {
+      async list(request) {
+        const plaza = ctx.get('plaza') as PlazaHostFace | undefined
+        if (plaza === undefined) {
+          return err(request, {
+            code: 'internal',
+            message: 'skill plaza is absent: the host composition does not mount @deepseek-ai/dsh-skill-plaza',
+            details: {},
+          })
+        }
+        try {
+          const skills = await plaza.list()
+          return ok(request, { skills })
+        } catch (error: unknown) {
+          return err(request, { code: 'internal', message: `skill plaza listing failed: ${String(error)}`, details: {} })
+        }
+      },
+      async install(request) {
+        const plaza = ctx.get('plaza') as PlazaHostFace | undefined
+        if (plaza === undefined) {
+          return err(request, {
+            code: 'internal',
+            message: 'skill plaza is absent: the host composition does not mount @deepseek-ai/dsh-skill-plaza',
+            details: {},
+          })
+        }
+        try {
+          const result = await plaza.install(request.payload.id)
+          return ok(request, result)
+        } catch (error: unknown) {
+          return err(request, { code: 'internal', message: `skill plaza install failed: ${String(error)}`, details: {} })
+        }
+      },
+      async refresh(request) {
+        const plaza = ctx.get('plaza') as PlazaHostFace | undefined
+        if (plaza === undefined) {
+          return err(request, {
+            code: 'internal',
+            message: 'skill plaza is absent: the host composition does not mount @deepseek-ai/dsh-skill-plaza',
+            details: {},
+          })
+        }
+        try {
+          await plaza.refresh()
+          return ok(request, {})
+        } catch (error: unknown) {
+          return err(request, { code: 'internal', message: `skill plaza refresh failed: ${String(error)}`, details: {} })
         }
       },
     },

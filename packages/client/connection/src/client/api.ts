@@ -12,6 +12,7 @@ export type {
   ResponseValue, WorkspaceApi, WorkspaceId, WorkspaceView,
   SkillsApi, SkillEntry,
   SkillManagerApi, SkillManagerEntry,
+  PlazaApi, PlazaSkillEntry,
   ModelCatalogFailure, ModelCatalogModel, ModelProviderGroup, ModelReasoning,
   ModelReasoningEffort, ModelSelection, QueueAction, QueuedInboxItem, SessionModels,
   GoalsApi, GoalRef,

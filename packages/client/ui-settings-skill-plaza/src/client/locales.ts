@@ -1,0 +1,62 @@
+/** Copy dictionaries for the Skill Plaza settings section. */
+
+/** Simplified Chinese dictionary and key source of truth. */
+export const zh = {
+  nav: '技能广场',
+  title: '技能广场',
+  intro: '汇聚 GitHub 上的热门技能：搜索、查看（中英双语）并一键安装。安装后立即出现在"技能管理"中，无需重启。',
+  loading: '正在加载技能广场…',
+  error: '暂时无法加载技能广场。',
+  actionError: '操作失败，请重试。',
+  retry: '重试',
+  refresh: '刷新',
+  refreshing: '刷新中…',
+  search: '搜索技能（中文/英文/仓库）',
+  catalog: '技能列表',
+  empty: '技能广场暂无内容。',
+  emptySearch: '没有匹配的技能。',
+  install: '安装',
+  installing: '安装中…',
+  installed: '已安装',
+  installFailed: '安装失败',
+  stars: '{count} ⭐',
+  curatedTag: '精选',
+  discoveredTag: '发现',
+  fromRepo: '来自 {repo}',
+  count: '共 {count} 个技能',
+  official: '官方',
+  community: '社区',
+  updated: '上次更新',
+} satisfies Record<string, string>
+
+/** Skill Plaza locale key union. */
+export type SkillPlazaLocaleKey = keyof typeof zh
+
+/** English dictionary checked against the Chinese key set. */
+export const en = {
+  nav: 'Skill Plaza',
+  title: 'Skill Plaza',
+  intro: 'Popular skills from GitHub: search, browse (Chinese/English), and install with one click. Installed skills appear in Skill Management immediately — no restart needed.',
+  loading: 'Loading Skill Plaza…',
+  error: 'Skill Plaza is temporarily unavailable.',
+  actionError: 'The operation failed, please retry.',
+  retry: 'Retry',
+  refresh: 'Refresh',
+  refreshing: 'Refreshing…',
+  search: 'Search skills (zh/en/repo)',
+  catalog: 'Skill list',
+  empty: 'The plaza is empty.',
+  emptySearch: 'No matching skills.',
+  install: 'Install',
+  installing: 'Installing…',
+  installed: 'Installed',
+  installFailed: 'Install failed',
+  stars: '{count} ⭐',
+  curatedTag: 'Curated',
+  discoveredTag: 'Discovered',
+  fromRepo: 'From {repo}',
+  count: '{count} skills',
+  official: 'Official',
+  community: 'Community',
+  updated: 'Last updated',
+} satisfies Record<SkillPlazaLocaleKey, string>

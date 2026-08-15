@@ -10,6 +10,7 @@ import type { WorkspaceApi } from './workspace.ts'
 import type { AgentPresetsApi } from './agent-presets.ts'
 import type { SkillsApi } from './skills.ts'
 import type { SkillManagerApi } from './skill-manager.ts'
+import type { PlazaApi } from './plaza.ts'
 import type { SubagentsApi } from './subagents.ts'
 import type { EventsApi } from './events.ts'
 import type { GoalsApi } from './goals.ts'
@@ -27,6 +28,7 @@ export interface ApiProxy {
   workspace: WorkspaceApi
   skills: SkillsApi
   skillManager: SkillManagerApi
+  plaza: PlazaApi
   agentPresets: AgentPresetsApi
   events: EventsApi
   goals: GoalsApi
@@ -58,6 +60,7 @@ export type { JobView } from './jobs.ts'
 export type { WorkspaceApi, WorkspaceId, WorkspaceView } from './workspace.ts'
 export type { SkillsApi, SkillEntry } from './skills.ts'
 export type { SkillManagerApi, SkillManagerEntry } from './skill-manager.ts'
+export type { PlazaApi, PlazaSkillEntry } from './plaza.ts'
 export type { AgentPresetsApi, AgentPresetEntry } from './agent-presets.ts'
 export type { EventsApi, MuxFrame, HostFrame, QueuedInboxItem, ToolCallView, ToolEventView, ToolResultView } from './events.ts'
 export type { GoalsApi, GoalId, GoalRef } from './goals.ts'
