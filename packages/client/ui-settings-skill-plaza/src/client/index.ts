@@ -45,6 +45,13 @@ export function apply(ctx: ClientContext): void {
       }
       return response.result.value.skills
     },
+    search: async (query) => {
+      const response = await api.plaza.search({ query })
+      if (!response.result.ok) {
+        throw new Error(`plaza.search failed: ${response.result.error.code}: ${response.result.error.message}`)
+      }
+      return response.result.value.skills
+    },
     install: async (id) => {
       const response = await api.plaza.install({ id })
       if (!response.result.ok) {

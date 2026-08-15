@@ -32,6 +32,16 @@ export const plazaListValueSchema = z.object({
   skills: z.array(plazaSkillEntrySchema),
 }) satisfies z.ZodType<Wire<ResponseValue<'plaza.list'>>>
 
+/** plaza.search request payload. */
+export const plazaSearchRequestSchema = z.object({
+  query: z.string().min(1),
+}) satisfies z.ZodType<Wire<RequestPayload<'plaza.search'>>>
+
+/** plaza.search response value. */
+export const plazaSearchValueSchema = z.object({
+  skills: z.array(plazaSkillEntrySchema),
+}) satisfies z.ZodType<Wire<ResponseValue<'plaza.search'>>>
+
 /** plaza.install request payload. */
 export const plazaInstallRequestSchema = z.object({
   id: z.string().min(1),

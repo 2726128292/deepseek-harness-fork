@@ -57,6 +57,7 @@ export interface RpcMethodMap {
   'skillManager.setEnabled': SkillManagerApi['setEnabled']
   'skillManager.remove': SkillManagerApi['remove']
   'plaza.list': PlazaApi['list']
+  'plaza.search': PlazaApi['search']
   'plaza.install': PlazaApi['install']
   'plaza.refresh': PlazaApi['refresh']
   'agentPreset.list': AgentPresetsApi['list']

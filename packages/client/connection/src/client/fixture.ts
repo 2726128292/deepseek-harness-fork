@@ -2805,6 +2805,11 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
           { id: 'fixture-plaza-demo', name: 'fixture-plaza-demo', nameZh: '广场示例技能', description: 'fixture 广场样本', descriptionZh: '仅供 UI 广场渲染验收', repo: 'fixture/repo', path: 'skills/fixture-plaza-demo', ref: 'main', stars: 1234, source: 'curated', installed: false },
         ],
       }),
+      search: request => ok(request, {
+        skills: [
+          { id: 'fixture-search-demo', name: 'fixture-search-demo', description: 'fixture GitHub 搜索结果', repo: 'fixture/repo', path: 'skills/fixture-search-demo', ref: 'main', stars: 999, source: 'discovered', installed: false },
+        ],
+      }),
       install: request => ok(request, { id: request.payload.id, name: 'fixture-plaza-demo' }),
       refresh: request => ok(request, {}),
     },
@@ -3129,6 +3134,7 @@ export class FixtureApiClient extends AbstractApiClient {
       case 'skillManager.setEnabled': return this.api.skillManager.setEnabled(request)
       case 'skillManager.remove': return this.api.skillManager.remove(request)
       case 'plaza.list': return this.api.plaza.list(request)
+      case 'plaza.search': return this.api.plaza.search(request)
       case 'plaza.install': return this.api.plaza.install(request)
       case 'plaza.refresh': return this.api.plaza.refresh(request)
       case 'agentPreset.list': return this.api.agentPresets.list(request)

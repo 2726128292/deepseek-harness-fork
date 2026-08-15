@@ -256,6 +256,7 @@ export class FakeApiClient implements IApiClient {
 
   readonly plaza: IApiClient['plaza'] = {
     list: (payload: unknown) => this.record('plaza.list', payload, Promise.resolve(ok({ skills: [] }))),
+    search: (payload: unknown) => this.record('plaza.search', payload, Promise.resolve(ok({ skills: [] }))),
     install: (payload: unknown) => this.record('plaza.install', payload, Promise.resolve(ok({ id: 'x', name: 'x' }))),
     refresh: (payload: unknown) => this.record('plaza.refresh', payload, Promise.resolve(ok({}))),
   }
@@ -323,7 +324,7 @@ export class FakeApiClient implements IApiClient {
     for (const conn of [...this.hostConns]) conn.feed({ kind: 'frame', envelope: { rpcId: RpcId(rpcId ?? `push-${nextRpc++}`), payload: frame } })
   }
 
-  /** End (clean close) or fail (throw) every open stream — reconnect-path material. */
+  /** End (clean close) or fail (throw) every open stream 鈥?reconnect-path material. */
   endStreams(): void {
     for (const conn of [...this.muxConns, ...this.hostConns]) conn.feed({ kind: 'end' })
   }

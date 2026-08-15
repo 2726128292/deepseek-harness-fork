@@ -53,6 +53,7 @@ import {
   plazaInstallRequestSchema,
   plazaListRequestSchema,
   plazaRefreshRequestSchema,
+  plazaSearchRequestSchema,
 } from '../api/plaza.schema.ts'
 import {
   agentPresetCopyRequestSchema, agentPresetListRequestSchema, agentPresetOpenDocumentRequestSchema,
@@ -131,6 +132,7 @@ const UNARY_ROUTES: UnaryRoutes = {
   'skillManager.setEnabled': { schema: skillManagerSetEnabledRequestSchema, invoke: (api, r) => api.skillManager.setEnabled(r) },
   'skillManager.remove': { schema: skillManagerRemoveRequestSchema, invoke: (api, r) => api.skillManager.remove(r) },
   'plaza.list': { schema: plazaListRequestSchema, invoke: (api, r) => api.plaza.list(r) },
+  'plaza.search': { schema: plazaSearchRequestSchema, invoke: (api, r) => api.plaza.search(r) },
   'plaza.install': { schema: plazaInstallRequestSchema, invoke: (api, r) => api.plaza.install(r) },
   'plaza.refresh': { schema: plazaRefreshRequestSchema, invoke: (api, r) => api.plaza.refresh(r) },
   'agentPreset.list': { schema: agentPresetListRequestSchema, invoke: (api, r) => api.agentPresets.list(r) },

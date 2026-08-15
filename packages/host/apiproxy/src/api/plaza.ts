@@ -41,6 +41,8 @@ export interface PlazaSkillEntry {
 export interface PlazaApi {
   /** Lists the merged plaza catalog with current install state. */
   list(request: RpcRequest<{}>): Promise<RpcResponse<{ skills: readonly PlazaSkillEntry[] }>>
+  /** Live GitHub search: repositories matching the query, with their skills enumerated. */
+  search(request: RpcRequest<{ query: string }>): Promise<RpcResponse<{ skills: readonly PlazaSkillEntry[] }>>
   /** Installs one plaza skill into the user skill root. */
   install(request: RpcRequest<{ id: string }>): Promise<RpcResponse<{ id: string; name: string }>>
   /** Forces a catalog refresh (re-fetch index, re-discover GitHub skills). */

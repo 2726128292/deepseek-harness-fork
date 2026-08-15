@@ -125,6 +125,7 @@ interface SkillManagerHostFace {
 /** Minimal structural face of the `ctx.plaza` service this proxy delegates to. */
 interface PlazaHostFace {
   list(): Promise<PlazaSkillEntry[]>
+  search(query: string): Promise<PlazaSkillEntry[]>
   install(id: string): Promise<{ id: string; name: string }>
   refresh(): Promise<void>
 }
@@ -3349,6 +3350,22 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           return ok(request, { skills })
         } catch (error: unknown) {
           return err(request, { code: 'internal', message: `skill plaza listing failed: ${String(error)}`, details: {} })
+        }
+      },
+      async search(request) {
+        const plaza = ctx.get('plaza') as PlazaHostFace | undefined
+        if (plaza === undefined) {
+          return err(request, {
+            code: 'internal',
+            message: 'skill plaza is absent: the host composition does not mount @deepseek-ai/dsh-skill-plaza',
+            details: {},
+          })
+        }
+        try {
+          const skills = await plaza.search(request.payload.query)
+          return ok(request, { skills })
+        } catch (error: unknown) {
+          return err(request, { code: 'internal', message: `skill plaza search failed: ${String(error)}`, details: {} })
         }
       },
       async install(request) {

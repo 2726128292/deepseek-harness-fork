@@ -238,6 +238,9 @@ function fakeApi(overrides: Partial<{ muxFrames: MuxFrame[]; hostFrames: HostFra
       async list(request) {
         return { rpcId: request.rpcId, result: { ok: true, value: { skills: [] } } }
       },
+      async search(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { skills: [] } } }
+      },
       async install(request) {
         return { rpcId: request.rpcId, result: { ok: true, value: { id: request.payload.id, name: 'stub' } } }
       },

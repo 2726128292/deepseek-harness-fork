@@ -75,9 +75,20 @@ const DEFAULT_INDEX_URL = 'https://raw.githubusercontent.com/2726128292/deepseek
 /** Catalog TTL: the plaza refreshes at most once a day (or on manual refresh). */
 const DEFAULT_CACHE_TTL_MS = 24 * 60 * 60 * 1000
 /** Repository search queries (best-effort; failures must not kill discovery). */
-const SEARCH_QUERIES = ['claude skills', 'agent skills']
-/** Maximum candidate repositories enumerated per discovery pass (bounds anonymous API use). */
-const MAX_DISCOVER_REPOS = 15
+const SEARCH_QUERIES = [
+  'claude skills',
+  'agent skills',
+  'claude code skills',
+  'skill library',
+  'agent skill pack',
+  'claude skill pack',
+]
+/** Maximum candidate repositories enumerated per discovery pass. The disk
+ * cache makes this a once-per-day cost, so a generous bound is fine even
+ * under anonymous API limits (trees + stars ≈ 2 calls per repository). */
+const MAX_DISCOVER_REPOS = 30
+/** Repositories searched per query. */
+const SEARCH_PER_PAGE = 30
 const SEED_REPOS = [
   { repo: 'anthropics/skills', ref: 'main' },
   { repo: 'obra/superpowers', ref: 'main' },
@@ -173,6 +184,61 @@ export class SkillPlazaService extends Service {
       if (left.source !== right.source) return left.source === 'curated' ? -1 : 1
       return (right.stars ?? 0) - (left.stars ?? 0)
     })
+  }
+
+  /**
+   * Live GitHub search: find repositories matching the query (English or
+   * Chinese) through the repository-search API, then enumerate skills from
+   * the top results. Runs on the search API's own rate-limit budget, so it
+   * stays usable even while the core quota is exhausted; repositories whose
+   * trees enumeration is rate-limited are skipped.
+   * @param query - the search text (e.g. "pdf", "web scraping").
+   * @returns skills discovered in matching repositories, best-effort.
+   */
+  async search(query: string): Promise<PlazaSkillEntry[]> {
+    const trimmed = query.trim()
+    if (trimmed.length === 0) return []
+    const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(trimmed)}&sort=stars&order=desc&per_page=10`
+    const data = (await this.githubJson(url)) as {
+      items?: { full_name?: unknown; default_branch?: unknown; stargazers_count?: unknown }[]
+    }
+    const installed = await this.installedNames()
+    const entries: PlazaSkillEntry[] = []
+    const seen = new Set<string>()
+    for (const item of (data.items ?? []).slice(0, 5)) {
+      if (typeof item.full_name !== 'string' || typeof item.default_branch !== 'string') continue
+      const repo = item.full_name
+      const ref = item.default_branch
+      let tree: TreeBlob[]
+      try {
+        tree = await this.tree(repo, ref)
+      } catch {
+        // Core quota exhausted — skip this repository, keep the rest.
+        continue
+      }
+      const stars = typeof item.stargazers_count === 'number' ? item.stargazers_count : undefined
+      for (const blob of tree) {
+        if (blob.type !== 'blob') continue
+        const match = blob.path.match(/^(?:skills\/)?([^/]+)\/SKILL\.md$/)
+        if (match === null) continue
+        const name = match[1]
+        if (name === undefined || !isSkillName(name) || seen.has(name)) continue
+        seen.add(name)
+        const directory = blob.path.slice(0, -'SKILL.md'.length - 1)
+        entries.push({
+          id: `${repo}/${directory}`,
+          name,
+          repo,
+          path: directory,
+          ref,
+          ...stars === undefined ? {} : { stars },
+          source: 'discovered',
+          installed: installed.has(name),
+          description: `From ${repo}`,
+        })
+      }
+    }
+    return entries
   }
 
   /**
@@ -361,7 +427,7 @@ export class SkillPlazaService extends Service {
       // collapse the catalog — the seeds plus whatever results landed stay.
       for (const query of SEARCH_QUERIES) {
         try {
-          const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=20`
+          const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=${SEARCH_PER_PAGE}`
           const data = (await this.githubJson(url)) as {
             items?: { full_name?: unknown; default_branch?: unknown }[]
           }

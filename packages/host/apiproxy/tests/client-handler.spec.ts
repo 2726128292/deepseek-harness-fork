@@ -100,6 +100,7 @@ function scriptedApi(overrides: {
     },
     plaza: {
       list: r => ok(r, { skills: [] }),
+      search: r => ok(r, { skills: [] }),
       install: r => ok(r, { id: r.payload.id, name: 'stub' }),
       refresh: r => ok(r, {}),
       ...overrides.plaza,

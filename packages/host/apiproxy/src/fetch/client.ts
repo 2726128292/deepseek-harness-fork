@@ -50,6 +50,7 @@ import {
   plazaInstallValueSchema,
   plazaListValueSchema,
   plazaRefreshValueSchema,
+  plazaSearchValueSchema,
 } from '../api/plaza.schema.ts'
 import {
   agentPresetCopyValueSchema, agentPresetListValueSchema, agentPresetOpenDocumentValueSchema,
@@ -141,6 +142,7 @@ export interface IApiClient {
   }
   plaza: {
     list(payload: RequestPayload<'plaza.list'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'plaza.list'>>>
+    search(payload: RequestPayload<'plaza.search'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'plaza.search'>>>
     install(payload: RequestPayload<'plaza.install'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'plaza.install'>>>
     refresh(payload: RequestPayload<'plaza.refresh'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'plaza.refresh'>>>
   }
@@ -223,6 +225,7 @@ const UNARY_VALUE_SCHEMAS: { [K in keyof RpcMethodMap]: z.ZodType<Wire<ResponseV
   'skillManager.setEnabled': skillManagerSetEnabledValueSchema,
   'skillManager.remove': skillManagerRemoveValueSchema,
   'plaza.list': plazaListValueSchema,
+  'plaza.search': plazaSearchValueSchema,
   'plaza.install': plazaInstallValueSchema,
   'plaza.refresh': plazaRefreshValueSchema,
   'agentPreset.list': agentPresetListValueSchema,
@@ -491,6 +494,7 @@ export abstract class AbstractApiClient implements IApiClient {
 
   readonly plaza: IApiClient['plaza'] = {
     list: (payload, signal) => this.callUnary('plaza.list', payload, signal),
+    search: (payload, signal) => this.callUnary('plaza.search', payload, signal),
     install: (payload, signal) => this.callUnary('plaza.install', payload, signal),
     refresh: (payload, signal) => this.callUnary('plaza.refresh', payload, signal),
   }
