@@ -26,6 +26,8 @@ export interface SkillManagerEntry {
   readonly provider: string
   /** Whether the host-level override currently hides this skill. */
   readonly disabled: boolean
+  /** Parsed optional metadata object from skill frontmatter (may carry localized names/descriptions). */
+  readonly metadata?: Readonly<Record<string, unknown>>
 }
 
 /**

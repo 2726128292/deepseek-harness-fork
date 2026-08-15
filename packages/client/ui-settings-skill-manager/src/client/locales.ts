@@ -26,6 +26,7 @@ export const zh = {
   source: '来源',
   provider: '提供方',
   whenToUse: '适用场景',
+  original: '原文描述',
   details: '详情',
   count: '共 {count} 个',
 } satisfies Record<string, string>
@@ -59,6 +60,7 @@ export const en = {
   source: 'Source',
   provider: 'Provider',
   whenToUse: 'When to use',
+  original: 'Original description',
   details: 'Details',
   count: '{count} total',
 } satisfies Record<SkillManagerLocaleKey, string>

@@ -41,6 +41,12 @@ function matches(entry: SkillManagerEntry, normalizedQuery: string): boolean {
     .some(value => value.toLocaleLowerCase().includes(normalizedQuery))
 }
 
+/** Read a string field from skill frontmatter metadata, tolerating missing or mistyped values. */
+function localized(metadata: SkillManagerEntry['metadata'], key: string): string | undefined {
+  const value = metadata?.[key]
+  return typeof value === 'string' && value.length > 0 ? value : undefined
+}
+
 /** Render the Skill management section. */
 export function SkillManagerSection({ t, list, setEnabled }: SkillManagerSectionProps): ReactNode {
   const detailIdBase = useId()
@@ -146,6 +152,9 @@ export function SkillManagerSection({ t, list, setEnabled }: SkillManagerSection
                 const open = expanded === entry.name
                 const pending = busy.has(entry.name)
                 const detailId = `${detailIdBase}-details-${encodeURIComponent(entry.name)}`
+                const nameZh = localized(entry.metadata, 'nameZh')
+                const descriptionZh = localized(entry.metadata, 'descriptionZh')
+                const displayName = nameZh ?? entry.name
                 return (
                   <li
                     className={css.card}
@@ -161,7 +170,7 @@ export function SkillManagerSection({ t, list, setEnabled }: SkillManagerSection
                         aria-controls={detailId}
                         onClick={() => { setExpanded(current => current === entry.name ? null : entry.name) }}
                       >
-                        <strong className={css.cardTitle}>{entry.name}</strong>
+                        <strong className={css.cardTitle} title={entry.name}>{displayName}</strong>
                         <span className={css.cardTrailing}>
                           <span className={css.configTag} data-disabled={entry.disabled ? 'true' : 'false'}>
                             {entry.disabled ? t('disabled') : t('enabled')}
@@ -174,7 +183,7 @@ export function SkillManagerSection({ t, list, setEnabled }: SkillManagerSection
                         type="button"
                         role="switch"
                         aria-checked={!entry.disabled}
-                        aria-label={`${entry.name}: ${entry.disabled ? t('enable') : t('disable')}`}
+                        aria-label={`${displayName}: ${entry.disabled ? t('enable') : t('disable')}`}
                         disabled={pending}
                         onClick={() => { void toggle(entry) }}
                       >
@@ -186,7 +195,7 @@ export function SkillManagerSection({ t, list, setEnabled }: SkillManagerSection
                         </span>
                       </button>
                     </div>
-                    <p className={css.cardDescription}>{entry.description}</p>
+                    <p className={css.cardDescription}>{descriptionZh ?? entry.description}</p>
                     {open ? (
                       <div className={css.cardDetails} id={detailId}>
                         <div className={css.surfaceTags}>
@@ -210,6 +219,12 @@ export function SkillManagerSection({ t, list, setEnabled }: SkillManagerSection
                             <div>
                               <dt>{t('whenToUse')}</dt>
                               <dd>{entry.whenToUse}</dd>
+                            </div>
+                          ) : null}
+                          {descriptionZh !== undefined ? (
+                            <div>
+                              <dt>{t('original')}</dt>
+                              <dd>{entry.description}</dd>
                             </div>
                           ) : null}
                         </dl>

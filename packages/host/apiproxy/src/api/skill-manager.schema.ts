@@ -19,6 +19,7 @@ export const skillManagerEntrySchema = z.object({
   source: z.string(),
   provider: z.string(),
   disabled: z.boolean(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 }) satisfies z.ZodType<Wire<SkillManagerEntry>>
 
 /** skillManager.list request payload (session-free). */

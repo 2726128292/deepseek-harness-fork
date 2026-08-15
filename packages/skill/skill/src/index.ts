@@ -68,6 +68,8 @@ export interface SkillSummary {
   readonly provider: string
   /** Provider-specific base for relative resources. */
   readonly resourceBase?: SkillResourceBase
+  /** Parsed optional metadata object from provider-specific skill frontmatter. */
+  readonly metadata?: Readonly<Record<string, unknown>>
 }
 
 /** Provider catalog entry used by the registry to merge and later load skills. */
@@ -828,7 +830,7 @@ function validateDefinition(skill: SkillDefinition): void {
 }
 
 function toSummary(skill: SkillDefinition | SkillCandidate): SkillSummary {
-  const { name, description, whenToUse, invocation, source, provider, resourceBase } = skill
+  const { name, description, whenToUse, invocation, source, provider, resourceBase, metadata } = skill
   return {
     name,
     description,
@@ -837,6 +839,7 @@ function toSummary(skill: SkillDefinition | SkillCandidate): SkillSummary {
     source,
     provider,
     ...resourceBase !== undefined ? { resourceBase } : {},
+    ...metadata !== undefined ? { metadata } : {},
   }
 }
 

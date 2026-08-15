@@ -1,6 +1,9 @@
 ---
 name: cordis-plugin-development
 description: Create, modify, debug, or extend dynamic Cordis Plugins, including Host Services and Events, Client Slot and theme UI, Package-private Client-to-Host calls, dynamic Tools, version updates, approval failures, and runtime diagnostics. Use this Skill to route a user request to the correct platform and Inspect Provider, then define, run, repair, or roll back the Plugin.
+metadata:
+  nameZh: 开发动态 Cordis 插件
+  descriptionZh: 创建、修改、调试或扩展动态 Cordis 插件时使用——包括宿主服务与事件、客户端槽位与主题界面、包级私有客户端到宿主调用、动态工具、版本更新、审批失败与运行时诊断。它会引导你选择正确的平台与 Inspect Provider，然后定义、运行、修复或回滚插件。
 ---
 
 # Develop Dynamic Cordis Plugins

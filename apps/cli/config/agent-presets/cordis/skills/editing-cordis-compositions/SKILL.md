@@ -1,6 +1,9 @@
 ---
 name: editing-cordis-compositions
 description: Use when creating, changing, or validating a Cordis composition for this harness — writing or editing an agent preset, adding or removing a plugin row, deciding whether something belongs to the host composition or to one session, checking whether a preset you authored actually mounts, or diagnosing a row that mounted but contributed nothing.
+metadata:
+  nameZh: 编辑 Cordis 组合配置
+  descriptionZh: 创建、修改或校验本工具的 Cordis 组合配置时使用——编写或编辑 agent preset、增删插件行、判断某能力应属于宿主组合还是单个会话、检查你写的 preset 是否能正常挂载，或排查挂载了但没生效的行。
 ---
 
 # Editing Cordis compositions

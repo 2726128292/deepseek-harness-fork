@@ -49,6 +49,8 @@ export interface SkillManagerEntry {
   readonly provider: string
   /** Whether the host-level override currently hides this skill. */
   readonly disabled: boolean
+  /** Parsed optional metadata object from skill frontmatter (may carry localized names/descriptions). */
+  readonly metadata?: Readonly<Record<string, unknown>>
 }
 
 /** Skill manager configuration. */
@@ -114,6 +116,7 @@ export class SkillManagerService extends Service {
         source: summary.source,
         provider: summary.provider,
         disabled: this.disabled.has(summary.name),
+        ...summary.metadata !== undefined ? { metadata: summary.metadata } : {},
       })
     }
     for (const skill of (await registry.snapshot({ includeDisabled: true })).skills) adopt(skill)
