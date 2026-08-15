@@ -21,11 +21,13 @@ export interface SkillManagerSectionInjected {
   list: () => Promise<readonly SkillManagerEntry[]>
   /** Set or clear the persisted disable override for one skill. */
   setEnabled: (name: string, enabled: boolean) => Promise<void>
+  /** Uninstall a user skill-root skill. */
+  remove: (name: string) => Promise<void>
 }
 
-/** Full component props assembled by the Settings slot renderer. */
+/** Full component props assembled by the Settings tab renderer. */
 export type SkillManagerSectionProps =
-  PropsRuntime<'settings.section'>
+  PropsRuntime<'settings.skill.tab'>
   & PropsLocale<'settings.skillManager'>
   & InjectFace<SkillManagerSectionInjected>
 
@@ -48,7 +50,7 @@ function localized(metadata: SkillManagerEntry['metadata'], key: string): string
 }
 
 /** Render the Skill management section. */
-export function SkillManagerSection({ t, list, setEnabled }: SkillManagerSectionProps): ReactNode {
+export function SkillManagerSection({ t, list, setEnabled, remove }: SkillManagerSectionProps): ReactNode {
   const detailIdBase = useId()
   const [request, setRequest] = useState(0)
   const [query, setQuery] = useState('')
@@ -108,6 +110,31 @@ export function SkillManagerSection({ t, list, setEnabled }: SkillManagerSection
         return next
       })
     }
+  }
+
+  const handleRemove = async (entry: SkillManagerEntry): Promise<void> => {
+    if (!globalThis.confirm(`${t('removeConfirm')}「${entry.name}」？`)) return
+    setActionError(false)
+    setBusy(previous => new Set([...previous, entry.name]))
+    try {
+      await remove(entry.name)
+      setState(current => current.status === 'ready'
+        ? { status: 'ready', entries: current.entries.filter(item => item.name !== entry.name) }
+        : current)
+    } catch {
+      setActionError(true)
+    } finally {
+      setBusy((previous) => {
+        const next = new Set(previous)
+        next.delete(entry.name)
+        return next
+      })
+    }
+  }
+
+  /** Whether the entry can be uninstalled from the user skill root. */
+  function removable(entry: SkillManagerEntry): boolean {
+    return entry.source === 'user-dsh' || entry.source === 'user-agents'
   }
 
   return (
@@ -194,6 +221,16 @@ export function SkillManagerSection({ t, list, setEnabled }: SkillManagerSection
                             : (entry.disabled ? t('enable') : t('disable'))}
                         </span>
                       </button>
+                      {removable(entry) ? (
+                        <button
+                          className={css.remove}
+                          type="button"
+                          disabled={pending}
+                          onClick={() => { void handleRemove(entry) }}
+                        >
+                          {t('remove')}
+                        </button>
+                      ) : null}
                     </div>
                     <p className={css.cardDescription}>{descriptionZh ?? entry.description}</p>
                     {open ? (

@@ -17,13 +17,15 @@ export interface SkillPlazaSectionInjected {
   list: () => Promise<readonly PlazaSkillEntry[]>
   /** Install one plaza skill into the user skill root. */
   install: (id: string) => Promise<void>
+  /** Uninstall a user skill-root skill. */
+  remove: (name: string) => Promise<void>
   /** Force a catalog refresh (re-fetch index, re-discover GitHub skills). */
   refresh: () => Promise<void>
 }
 
-/** Full component props assembled by the Settings slot renderer. */
+/** Full component props assembled by the Settings tab renderer. */
 export type SkillPlazaSectionProps =
-  PropsRuntime<'settings.section'>
+  PropsRuntime<'settings.skill.tab'>
   & PropsLocale<'settings.skillPlaza'>
   & InjectFace<SkillPlazaSectionInjected>
 
@@ -50,7 +52,7 @@ function displayDescription(entry: PlazaSkillEntry): string {
 }
 
 /** Render the Skill Plaza section. */
-export function SkillPlazaSection({ t, list, install, refresh }: SkillPlazaSectionProps): ReactNode {
+export function SkillPlazaSection({ t, list, install, remove, refresh }: SkillPlazaSectionProps): ReactNode {
   const [request, setRequest] = useState(0)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'curated' | 'discovered'>('all')
@@ -110,6 +112,27 @@ export function SkillPlazaSection({ t, list, install, refresh }: SkillPlazaSecti
         ? { status: 'ready', entries: current.entries.map(item => item.id === entry.id ? { ...item, installed: true } : item) }
         : current)
       setNotice(t('installedNotice').replace('{name}', displayName(entry)))
+    } catch {
+      setActionError(`${t('installFailed')}: ${displayName(entry)}`)
+    } finally {
+      setBusy((previous) => {
+        const next = new Set(previous)
+        next.delete(entry.id)
+        return next
+      })
+    }
+  }
+
+  const handleRemove = async (entry: PlazaSkillEntry): Promise<void> => {
+    if (!globalThis.confirm(`${t('uninstallConfirm')}「${displayName(entry)}」？`)) return
+    setActionError(undefined)
+    setNotice(undefined)
+    setBusy(previous => new Set([...previous, entry.id]))
+    try {
+      await remove(entry.name)
+      setState(current => current.status === 'ready'
+        ? { status: 'ready', entries: current.entries.map(item => item.id === entry.id ? { ...item, installed: false } : item) }
+        : current)
     } catch {
       setActionError(`${t('installFailed')}: ${displayName(entry)}`)
     } finally {
@@ -211,10 +234,12 @@ export function SkillPlazaSection({ t, list, install, refresh }: SkillPlazaSecti
                         className={css.install}
                         type="button"
                         data-installed={entry.installed ? 'true' : 'false'}
-                        disabled={pending || entry.installed}
-                        onClick={() => { void handleInstall(entry) }}
+                        disabled={pending}
+                        onClick={() => { void (entry.installed ? handleRemove(entry) : handleInstall(entry)) }}
                       >
-                        {pending ? t('installing') : entry.installed ? t('installed') : t('install')}
+                        {pending
+                          ? (entry.installed ? t('uninstalling') : t('installing'))
+                          : entry.installed ? t('uninstall') : t('install')}
                       </button>
                     </div>
                   </li>

@@ -22,7 +22,7 @@
  * @module @deepseek-ai/dsh-skill-manager
  */
 
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
@@ -59,6 +59,8 @@ export interface Config {
   readonly dshHome?: string
   /** Override persistence file. Defaults to `<dshHome>/skill-manager.json`. */
   readonly file?: string
+  /** User skill install root. Defaults to `<dshHome>/skills`. */
+  readonly skillRoot?: string
 }
 
 /** Minimal structural view of the agent-presets roster the manager reads. */
@@ -75,11 +77,13 @@ export class SkillManagerService extends Service {
   static Config: Schema<Config> = z.object({
     dshHome: z.string(),
     file: z.string(),
+    skillRoot: z.string(),
   })
 
   static inject = ['skills']
 
   private readonly file: string
+  private readonly skillRoot: string
   private readonly disabled = new Set<string>()
   private loaded: Promise<void> | undefined
   private writeChain: Promise<void> = Promise.resolve()
@@ -88,6 +92,7 @@ export class SkillManagerService extends Service {
     super(ctx, 'skillManager')
     const dshHome = resolveDshHome(config.dshHome)
     this.file = resolve(config.file ?? join(dshHome, 'skill-manager.json'))
+    this.skillRoot = resolve(config.skillRoot ?? join(dshHome, 'skills'))
   }
 
   /** Replay persisted overrides into the registry after construction. */
@@ -158,6 +163,31 @@ export class SkillManagerService extends Service {
   }
 
   /**
+   * Uninstall a skill from the user skill root. Only skills living under the
+   * user root (`<dshHome>/skills`) can be removed — bundled, project, and
+   * preset skills are read-only here. The skill-filesystem watcher observes
+   * the removal immediately, and any disable override for the name is
+   * cleared so a later reinstall starts enabled.
+   * @param name - kebab-case skill name.
+   * @throws when the name is invalid or the skill is not installed in the user root.
+   */
+  async remove(name: string): Promise<void> {
+    await this.loaded
+    if (!isSkillName(name)) {
+      throw new Error(`skill-manager: invalid skill name "${name}"`)
+    }
+    const target = join(this.skillRoot, name)
+    if (!(await pathExists(join(target, 'SKILL.md')))) {
+      throw new Error(`skill-manager: skill "${name}" is not installed in the user skill root`)
+    }
+    await rm(target, { recursive: true, force: true })
+    this.disabled.delete(name)
+    const registry = this.ctx.get('skills') as SkillRegistry | undefined
+    registry?.setSkillEnabled(name, true)
+    await this.persist()
+  }
+
+  /**
    * Read the persisted override list and apply it to the registry. Runs once
    * at boot through {@link SkillManagerService.init}; a missing or malformed
    * file is treated as an empty list (nothing disabled) and only logs a
@@ -208,6 +238,15 @@ export class SkillManagerService extends Service {
 
 function isAbsentError(error: unknown): boolean {
   return hasErrorCode(error, 'ENOENT') || hasErrorCode(error, 'ENOTDIR')
+}
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await access(path)
+    return true
+  } catch {
+    return false
+  }
 }
 
 function hasErrorCode(error: unknown, code: string): boolean {

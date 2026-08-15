@@ -2797,6 +2797,7 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         ],
       }),
       setEnabled: request => ok(request, {}),
+      remove: request => ok(request, {}),
     },
     plaza: {
       list: request => ok(request, {
@@ -3126,6 +3127,7 @@ export class FixtureApiClient extends AbstractApiClient {
       case 'skill.list': return this.api.skills.list(request)
       case 'skillManager.list': return this.api.skillManager.list(request)
       case 'skillManager.setEnabled': return this.api.skillManager.setEnabled(request)
+      case 'skillManager.remove': return this.api.skillManager.remove(request)
       case 'plaza.list': return this.api.plaza.list(request)
       case 'plaza.install': return this.api.plaza.install(request)
       case 'plaza.refresh': return this.api.plaza.refresh(request)

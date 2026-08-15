@@ -61,6 +61,16 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      */
     'settings.plugins.tab': { kind: 'list'; scope: 'root'; owner: SettingsPluginsTabOwnerProps }
     /**
+     * One page inside the Skills settings section. The section owner renders
+     * localized entry labels as tabs and mounts each contribution inside its
+     * corresponding tab panel. Options: `id` (tab key), `order` (tab order),
+     * and `label` (registrant-localized tab text). Declared at runtime by the
+     * feature that owns the Skills section (ui-settings-skill-manager); the
+     * type lives here so the manager and the plaza collaborate without
+     * depending on one another.
+     */
+    'settings.skill.tab': { kind: 'list'; scope: 'root'; owner: SettingsSkillTabOwnerProps }
+    /**
      * Root-scoped onboarding steps contributed by settings features. The
      * shell mounts one ordered step at a time; the active registrant either
      * completes itself or keeps ownership until the user completes its sole
@@ -96,6 +106,12 @@ export interface SettingsGeneralItemOwnerProps {
 
 /** Owner share of a Plugins tab (the section supplies nothing). */
 export interface SettingsPluginsTabOwnerProps {
+  /** Marker field: tab owner props are intentionally empty. */
+  children?: never
+}
+
+/** Owner share of a Skills tab (the section supplies nothing). */
+export interface SettingsSkillTabOwnerProps {
   /** Marker field: tab owner props are intentionally empty. */
   children?: never
 }

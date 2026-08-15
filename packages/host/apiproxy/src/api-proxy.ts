@@ -119,6 +119,7 @@ const DEFAULT_MAX_MESSAGES = 50
 interface SkillManagerHostFace {
   list(): Promise<SkillManagerEntry[]>
   setEnabled(name: string, enabled: boolean): Promise<void>
+  remove(name: string): Promise<void>
 }
 
 /** Minimal structural face of the `ctx.plaza` service this proxy delegates to. */
@@ -3308,6 +3309,22 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           return ok(request, {})
         } catch (error: unknown) {
           return err(request, { code: 'internal', message: `skill manager update failed: ${String(error)}`, details: {} })
+        }
+      },
+      async remove(request) {
+        const manager = ctx.get('skillManager') as SkillManagerHostFace | undefined
+        if (manager === undefined) {
+          return err(request, {
+            code: 'internal',
+            message: 'skill manager is absent: the host composition does not mount @deepseek-ai/dsh-skill-manager',
+            details: {},
+          })
+        }
+        try {
+          await manager.remove(request.payload.name)
+          return ok(request, {})
+        } catch (error: unknown) {
+          return err(request, { code: 'internal', message: `skill manager removal failed: ${String(error)}`, details: {} })
         }
       },
     },

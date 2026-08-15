@@ -43,6 +43,7 @@ import {
 import { skillListValueSchema } from '../api/skills.schema.ts'
 import {
   skillManagerListValueSchema,
+  skillManagerRemoveValueSchema,
   skillManagerSetEnabledValueSchema,
 } from '../api/skill-manager.schema.ts'
 import {
@@ -136,6 +137,7 @@ export interface IApiClient {
   skillManager: {
     list(payload: RequestPayload<'skillManager.list'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'skillManager.list'>>>
     setEnabled(payload: RequestPayload<'skillManager.setEnabled'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'skillManager.setEnabled'>>>
+    remove(payload: RequestPayload<'skillManager.remove'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'skillManager.remove'>>>
   }
   plaza: {
     list(payload: RequestPayload<'plaza.list'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'plaza.list'>>>
@@ -219,6 +221,7 @@ const UNARY_VALUE_SCHEMAS: { [K in keyof RpcMethodMap]: z.ZodType<Wire<ResponseV
   'skill.list': skillListValueSchema,
   'skillManager.list': skillManagerListValueSchema,
   'skillManager.setEnabled': skillManagerSetEnabledValueSchema,
+  'skillManager.remove': skillManagerRemoveValueSchema,
   'plaza.list': plazaListValueSchema,
   'plaza.install': plazaInstallValueSchema,
   'plaza.refresh': plazaRefreshValueSchema,
@@ -483,6 +486,7 @@ export abstract class AbstractApiClient implements IApiClient {
   readonly skillManager: IApiClient['skillManager'] = {
     list: (payload, signal) => this.callUnary('skillManager.list', payload, signal),
     setEnabled: (payload, signal) => this.callUnary('skillManager.setEnabled', payload, signal),
+    remove: (payload, signal) => this.callUnary('skillManager.remove', payload, signal),
   }
 
   readonly plaza: IApiClient['plaza'] = {

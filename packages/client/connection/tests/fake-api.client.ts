@@ -198,6 +198,7 @@ export class FakeApiClient implements IApiClient {
   readonly skillManager: IApiClient['skillManager'] = {
     list: (payload: unknown) => this.record('skillManager.list', payload, Promise.resolve(ok({ skills: [] }))),
     setEnabled: (payload: unknown) => this.record('skillManager.setEnabled', payload, Promise.resolve(ok({}))),
+    remove: (payload: unknown) => this.record('skillManager.remove', payload, Promise.resolve(ok({}))),
   }
 
   readonly plaza: IApiClient['plaza'] = {

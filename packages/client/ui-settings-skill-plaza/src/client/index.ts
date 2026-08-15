@@ -1,8 +1,8 @@
 /**
- * Settings → Skill Plaza browser plugin: one nav section browsing and
- * installing popular GitHub skills. The section talks to the host `plaza`
- * domain through the connection API; installed skills appear in Skill
- * Management immediately via the filesystem watcher.
+ * Settings → Skills → Skill Plaza browser plugin: one tab inside the Skills
+ * section, browsing and installing popular GitHub skills. The tab talks to
+ * the host `plaza` domain through the connection API; installed skills
+ * appear in the "My Skills" tab immediately via the filesystem watcher.
  */
 
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
@@ -31,7 +31,7 @@ export const NS = 'settings.skillPlaza'
 /** Services required by the Settings registration. */
 export const inject = ['slots', 'locale', 'connection']
 
-/** Contribute the Skill Plaza section to Settings navigation. */
+/** Contribute the Skill Plaza tab to the Skills settings section. */
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-settings-skill-plaza: dictionaries')
 
@@ -51,6 +51,12 @@ export function apply(ctx: ClientContext): void {
         throw new Error(`plaza.install failed: ${response.result.error.code}: ${response.result.error.message}`)
       }
     },
+    remove: async (name) => {
+      const response = await api.skillManager.remove({ name })
+      if (!response.result.ok) {
+        throw new Error(`skillManager.remove failed: ${response.result.error.code}: ${response.result.error.message}`)
+      }
+    },
     refresh: async () => {
       const response = await api.plaza.refresh({})
       if (!response.result.ok) {
@@ -59,10 +65,10 @@ export function apply(ctx: ClientContext): void {
     },
   })
 
-  ctx.slots.inject('settings.section', () => ctx.slots.register({
-    name: 'settings.section',
+  ctx.slots.inject('settings.skill.tab', () => ctx.slots.register({
+    name: 'settings.skill.tab',
     id: 'plaza',
-    order: 25,
+    order: 10,
     label: () => t('nav'),
     locale: NS,
     inject: injected,

@@ -65,14 +65,15 @@ export interface Config {
   readonly skillRoot?: string
   /** Curated index URL. Defaults to the deepseek-harness-fork plaza.json. */
   readonly indexUrl?: string
-  /** Catalog cache TTL. Defaults to one hour. */
+  /** Catalog cache TTL. Defaults to one day. */
   readonly cacheTtlMs?: number
   /** Optional GitHub token (also read from `$DSH_GITHUB_TOKEN`) to lift API limits. */
   readonly githubToken?: string
 }
 
 const DEFAULT_INDEX_URL = 'https://raw.githubusercontent.com/2726128292/deepseek-harness-fork/master/skill-plaza/plaza.json'
-const DEFAULT_CACHE_TTL_MS = 60 * 60 * 1000
+/** Catalog TTL: the plaza refreshes at most once a day (or on manual refresh). */
+const DEFAULT_CACHE_TTL_MS = 24 * 60 * 60 * 1000
 /** Repository search queries (best-effort; failures must not kill discovery). */
 const SEARCH_QUERIES = ['claude skills', 'agent skills']
 /** Maximum candidate repositories enumerated per discovery pass (bounds anonymous API use). */

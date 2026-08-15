@@ -3,6 +3,7 @@
 /** Simplified Chinese dictionary and key source of truth. */
 export const zh = {
   nav: '技能管理',
+  tabMine: '我的技能',
   title: '技能管理',
   intro: '统一查看与管理 DeepSeek Harness 中的技能（Skill）：启用或停用任意技能，停用后模型目录、skill 工具与 /名称 调用都会立即停止看到它。',
   loading: '正在读取技能…',
@@ -29,6 +30,8 @@ export const zh = {
   original: '原文描述',
   details: '详情',
   count: '共 {count} 个',
+  remove: '删除',
+  removeConfirm: '确定删除技能',
 } satisfies Record<string, string>
 
 /** Skill management locale key union. */
@@ -37,6 +40,7 @@ export type SkillManagerLocaleKey = keyof typeof zh
 /** English dictionary checked against the Chinese key set. */
 export const en = {
   nav: 'Skills',
+  tabMine: 'My Skills',
   title: 'Skill Management',
   intro: 'Browse and manage every skill in DeepSeek Harness: enabling or disabling a skill takes effect immediately on the model catalog, the skill tool, and /name invocation.',
   loading: 'Reading skills…',
@@ -63,4 +67,6 @@ export const en = {
   original: 'Original description',
   details: 'Details',
   count: '{count} total',
+  remove: 'Remove',
+  removeConfirm: 'Remove skill',
 } satisfies Record<SkillManagerLocaleKey, string>

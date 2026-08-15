@@ -39,3 +39,12 @@ export const skillManagerSetEnabledRequestSchema = z.object({
 /** skillManager.setEnabled response value. */
 export const skillManagerSetEnabledValueSchema = z.object({
 }) satisfies z.ZodType<Wire<ResponseValue<'skillManager.setEnabled'>>>
+
+/** skillManager.remove request payload. */
+export const skillManagerRemoveRequestSchema = z.object({
+  name: z.string().min(1),
+}) satisfies z.ZodType<Wire<RequestPayload<'skillManager.remove'>>>
+
+/** skillManager.remove response value. */
+export const skillManagerRemoveValueSchema = z.object({
+}) satisfies z.ZodType<Wire<ResponseValue<'skillManager.remove'>>>

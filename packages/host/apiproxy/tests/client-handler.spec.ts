@@ -95,6 +95,7 @@ function scriptedApi(overrides: {
     skillManager: {
       list: r => ok(r, { skills: [] }),
       setEnabled: r => ok(r, {}),
+      remove: r => ok(r, {}),
       ...overrides.skillManager,
     },
     plaza: {

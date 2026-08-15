@@ -32,13 +32,15 @@ export interface SkillManagerEntry {
 
 /**
  * SkillManager-domain unary methods (the map key skillManager.* of
- * RpcMethodMap). Both methods are session-free: the settings panel has no
- * current session by design, and the host resolves the merged catalog and
- * the persisted override list itself.
+ * RpcMethodMap). All methods are session-free: the settings panel has no
+ * current session by design, and the host resolves the merged catalog, the
+ * persisted override list, and the user skill root itself.
  */
 export interface SkillManagerApi {
   /** Lists the merged skill catalog with current enabled/disabled flags. */
   list(request: RpcRequest<{}>): Promise<RpcResponse<{ skills: readonly SkillManagerEntry[] }>>
   /** Sets or clears the persisted disable override for one skill. */
   setEnabled(request: RpcRequest<{ name: string; enabled: boolean }>): Promise<RpcResponse<{}>>
+  /** Uninstalls a user skill-root skill (bundled/project/preset skills are read-only). */
+  remove(request: RpcRequest<{ name: string }>): Promise<RpcResponse<{}>>
 }

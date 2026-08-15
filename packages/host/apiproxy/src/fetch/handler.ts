@@ -46,6 +46,7 @@ import {
 import { skillListRequestSchema } from '../api/skills.schema.ts'
 import {
   skillManagerListRequestSchema,
+  skillManagerRemoveRequestSchema,
   skillManagerSetEnabledRequestSchema,
 } from '../api/skill-manager.schema.ts'
 import {
@@ -128,6 +129,7 @@ const UNARY_ROUTES: UnaryRoutes = {
   'skill.list': { schema: skillListRequestSchema, invoke: (api, r) => api.skills.list(r) },
   'skillManager.list': { schema: skillManagerListRequestSchema, invoke: (api, r) => api.skillManager.list(r) },
   'skillManager.setEnabled': { schema: skillManagerSetEnabledRequestSchema, invoke: (api, r) => api.skillManager.setEnabled(r) },
+  'skillManager.remove': { schema: skillManagerRemoveRequestSchema, invoke: (api, r) => api.skillManager.remove(r) },
   'plaza.list': { schema: plazaListRequestSchema, invoke: (api, r) => api.plaza.list(r) },
   'plaza.install': { schema: plazaInstallRequestSchema, invoke: (api, r) => api.plaza.install(r) },
   'plaza.refresh': { schema: plazaRefreshRequestSchema, invoke: (api, r) => api.plaza.refresh(r) },
