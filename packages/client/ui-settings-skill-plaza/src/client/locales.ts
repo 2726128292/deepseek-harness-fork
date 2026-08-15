@@ -42,6 +42,8 @@ export const zh = {
   dailyTab: '每日精选',
   uninstalledOnly: '只看未安装',
   installedNotice: '已安装「{name}」，可在技能管理中查看',
+  fullscreen: '全屏',
+  exitFullscreen: '退出全屏',
 } satisfies Record<string, string>
 
 /** Skill Plaza locale key union. */
@@ -89,4 +91,6 @@ export const en = {
   dailyTab: 'Daily picks',
   uninstalledOnly: 'Uninstalled only',
   installedNotice: 'Installed "{name}" — see it in Skill Management',
+  fullscreen: 'Fullscreen',
+  exitFullscreen: 'Exit fullscreen',
 } satisfies Record<SkillPlazaLocaleKey, string>

@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { PlazaSkillEntry } from '@deepseek-ai/dsh-client-connection/client'
 import { IconSearchOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import { en as enDict, zh as zhDict, type SkillPlazaLocaleKey } from './locales.ts'
+import { zh as zhDict, type SkillPlazaLocaleKey } from './locales.ts'
 import css from './SkillPlazaSection.module.css'
 
 /** Plaza display language: English shows the original text; Chinese shows
@@ -91,8 +91,9 @@ export function SkillPlazaSection({
   list, search, install, remove, refresh,
 }: SkillPlazaSectionProps): ReactNode {
   const [lang, setLang] = useState<PlazaLang>(readLang)
-  const dict = lang === 'zh' ? zhDict : enDict
-  const t = (key: SkillPlazaLocaleKey): string => dict[key]
+  // UI copy stays Chinese; the language toggle only translates skill content.
+  const t = (key: SkillPlazaLocaleKey): string => zhDict[key]
+  const [fullscreen, setFullscreen] = useState(false)
   const [request, setRequest] = useState(0)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'curated' | 'discovered' | 'hot' | 'daily'>('all')
@@ -155,7 +156,7 @@ export function SkillPlazaSection({
       return dailyPick(state.entries, 10, new Date().toISOString().slice(0, 10))
     }
     return base
-  }, [filter, normalizedQuery, state, uninstalledOnly])
+  }, [filter, normalizedQuery, state, uninstalledOnly, lang])
 
   // Local-first search: when the query matches nothing in the local catalog
   // (and is long enough to be meaningful), auto-search GitHub for matching
@@ -235,10 +236,21 @@ export function SkillPlazaSection({
     }
   }
 
-  return (
+  const body = (
     <div className={css.section} aria-busy={state.status === 'loading' || refreshing}>
-      <h2 className={css.heading}>{t('title')}</h2>
-      <p className={css.intro}>{t('intro')}</p>
+      <div className={css.sectionHeader}>
+        <div>
+          <h2 className={css.heading}>{t('title')}</h2>
+          <p className={css.intro}>{t('intro')}</p>
+        </div>
+        <button
+          className={css.fullscreenButton}
+          type="button"
+          onClick={() => { setFullscreen(true) }}
+        >
+          {t('fullscreen')}
+        </button>
+      </div>
       {actionError !== undefined ? <p className={css.failure} role="alert">{actionError}</p> : null}
       {state.status === 'loading' ? <p className={css.status}>{t('loading')}</p> : null}
       {state.status === 'error' ? (
@@ -348,6 +360,24 @@ export function SkillPlazaSection({
             : null}
         </div>
       ) : null}
+    </div>
+  )
+
+  if (!fullscreen) return body
+
+  return (
+    <div className={css.fullscreenOverlay} role="dialog" aria-label={t('title')}>
+      <div className={css.fullscreenHeader}>
+        <h2>{t('title')}</h2>
+        <button
+          className={css.fullscreenButton}
+          type="button"
+          onClick={() => { setFullscreen(false) }}
+        >
+          {t('exitFullscreen')}
+        </button>
+      </div>
+      <div className={css.fullscreenBody}>{body}</div>
     </div>
   )
 }
