@@ -33,6 +33,20 @@ export interface PlazaSkillEntry {
   readonly installed: boolean
 }
 
+/** One repository matched by a live search, rendered as a project card (wire projection of the host PlazaRepoEntry). */
+export interface PlazaRepoEntry {
+  /** Repository full name (`owner/name`). */
+  readonly fullName: string
+  /** Repository description, when the search index provides one. */
+  readonly description?: string
+  /** Star count, when known. */
+  readonly stars?: number
+  /** Primary language, when known. */
+  readonly language?: string
+  /** How many skills were found inside this repository. */
+  readonly skillCount: number
+}
+
 /**
  * Plaza-domain unary methods (the map key plaza.* of RpcMethodMap).
  * Session-free like the skillManager domain: the host resolves the catalog
@@ -41,8 +55,9 @@ export interface PlazaSkillEntry {
 export interface PlazaApi {
   /** Lists the merged plaza catalog with current install state. */
   list(request: RpcRequest<{}>): Promise<RpcResponse<{ skills: readonly PlazaSkillEntry[] }>>
-  /** Live GitHub search: repositories matching the query, with their skills enumerated. */
-  search(request: RpcRequest<{ query: string }>): Promise<RpcResponse<{ skills: readonly PlazaSkillEntry[] }>>
+  /** Live GitHub search: matching repositories (project cards) plus their skills. */
+  search(request: RpcRequest<{ query: string }>):
+  Promise<RpcResponse<{ repos: readonly PlazaRepoEntry[]; skills: readonly PlazaSkillEntry[] }>>
   /** Installs one plaza skill into the user skill root. */
   install(request: RpcRequest<{ id: string }>): Promise<RpcResponse<{ id: string; name: string }>>
   /** Forces a catalog refresh (re-fetch index, re-discover GitHub skills). */

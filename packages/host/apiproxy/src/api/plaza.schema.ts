@@ -7,7 +7,7 @@
 import { z } from 'zod'
 import type { RequestPayload, ResponseValue } from './rpc-map.ts'
 import type { Wire } from './rpc.schema.ts'
-import type { PlazaSkillEntry } from './plaza.ts'
+import type { PlazaRepoEntry, PlazaSkillEntry } from './plaza.ts'
 
 /** PlazaSkillEntry row of plaza.list. */
 export const plazaSkillEntrySchema = z.object({
@@ -27,6 +27,15 @@ export const plazaSkillEntrySchema = z.object({
 /** plaza.list request payload (session-free). */
 export const plazaListRequestSchema = z.object({}) satisfies z.ZodType<Wire<RequestPayload<'plaza.list'>>>
 
+/** PlazaRepoEntry row of plaza.search. */
+export const plazaRepoEntrySchema = z.object({
+  fullName: z.string().min(1),
+  description: z.string().optional(),
+  stars: z.number().optional(),
+  language: z.string().optional(),
+  skillCount: z.number().int().nonnegative(),
+}) satisfies z.ZodType<Wire<PlazaRepoEntry>>
+
 /** plaza.list response value. */
 export const plazaListValueSchema = z.object({
   skills: z.array(plazaSkillEntrySchema),
@@ -39,6 +48,7 @@ export const plazaSearchRequestSchema = z.object({
 
 /** plaza.search response value. */
 export const plazaSearchValueSchema = z.object({
+  repos: z.array(plazaRepoEntrySchema),
   skills: z.array(plazaSkillEntrySchema),
 }) satisfies z.ZodType<Wire<ResponseValue<'plaza.search'>>>
 

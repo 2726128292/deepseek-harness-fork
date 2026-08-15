@@ -57,6 +57,20 @@ export interface PlazaSkillEntry {
   readonly installed: boolean
 }
 
+/** One repository matched by a live search, rendered as a project card. */
+export interface PlazaRepoEntry {
+  /** Repository full name (`owner/name`). */
+  readonly fullName: string
+  /** Repository description, when the search index provides one. */
+  readonly description?: string
+  /** Star count, when known. */
+  readonly stars?: number
+  /** Primary language, when known. */
+  readonly language?: string
+  /** How many skills were found inside this repository. */
+  readonly skillCount: number
+}
+
 /** Skill plaza configuration. */
 export interface Config {
   /** DeepSeek Harness config root. Defaults to `$DSH_HOME` or `~/.dsh`. */
@@ -191,32 +205,53 @@ export class SkillPlazaService extends Service {
    * Chinese) through the repository-search API, then enumerate skills from
    * the top results. Runs on the search API's own rate-limit budget, so it
    * stays usable even while the core quota is exhausted; repositories whose
-   * trees enumeration is rate-limited are skipped.
+   * trees enumeration is rate-limited are still returned as project cards.
    * @param query - the search text (e.g. "pdf", "web scraping").
-   * @returns skills discovered in matching repositories, best-effort.
+   * @returns matching repositories (project cards) plus the skills found in them.
    */
-  async search(query: string): Promise<PlazaSkillEntry[]> {
+  async search(query: string): Promise<{ repos: PlazaRepoEntry[]; skills: PlazaSkillEntry[] }> {
     const trimmed = query.trim()
-    if (trimmed.length === 0) return []
+    if (trimmed.length === 0) return { repos: [], skills: [] }
     const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(trimmed)}&sort=stars&order=desc&per_page=10`
     const data = (await this.githubJson(url)) as {
-      items?: { full_name?: unknown; default_branch?: unknown; stargazers_count?: unknown }[]
+      items?: {
+        full_name?: unknown
+        default_branch?: unknown
+        stargazers_count?: unknown
+        description?: unknown
+        language?: unknown
+      }[]
     }
     const installed = await this.installedNames()
-    const entries: PlazaSkillEntry[] = []
+    const repos: PlazaRepoEntry[] = []
+    const skills: PlazaSkillEntry[] = []
     const seen = new Set<string>()
     for (const item of (data.items ?? []).slice(0, 5)) {
       if (typeof item.full_name !== 'string' || typeof item.default_branch !== 'string') continue
       const repo = item.full_name
       const ref = item.default_branch
+      const stars = typeof item.stargazers_count === 'number' ? item.stargazers_count : undefined
+      const description = typeof item.description === 'string' && item.description.length > 0
+        ? item.description
+        : undefined
+      const language = typeof item.language === 'string' && item.language.length > 0
+        ? item.language
+        : undefined
       let tree: TreeBlob[]
       try {
         tree = await this.tree(repo, ref)
       } catch {
-        // Core quota exhausted — skip this repository, keep the rest.
+        // Core quota exhausted — keep the project card without its skills.
+        repos.push({
+          fullName: repo,
+          ...description === undefined ? {} : { description },
+          ...stars === undefined ? {} : { stars },
+          ...language === undefined ? {} : { language },
+          skillCount: 0,
+        })
         continue
       }
-      const stars = typeof item.stargazers_count === 'number' ? item.stargazers_count : undefined
+      let skillCount = 0
       for (const blob of tree) {
         if (blob.type !== 'blob') continue
         const match = blob.path.match(/^(?:skills\/)?([^/]+)\/SKILL\.md$/)
@@ -224,8 +259,9 @@ export class SkillPlazaService extends Service {
         const name = match[1]
         if (name === undefined || !isSkillName(name) || seen.has(name)) continue
         seen.add(name)
+        skillCount += 1
         const directory = blob.path.slice(0, -'SKILL.md'.length - 1)
-        entries.push({
+        skills.push({
           id: `${repo}/${directory}`,
           name,
           repo,
@@ -237,8 +273,15 @@ export class SkillPlazaService extends Service {
           description: `From ${repo}`,
         })
       }
+      repos.push({
+        fullName: repo,
+        ...description === undefined ? {} : { description },
+        ...stars === undefined ? {} : { stars },
+        ...language === undefined ? {} : { language },
+        skillCount,
+      })
     }
-    return entries
+    return { repos, skills }
   }
 
   /**
@@ -292,14 +335,17 @@ export class SkillPlazaService extends Service {
 
   /**
    * Force the next catalog read to refetch the curated index and rediscover
-   * GitHub skills (TTL caches cleared).
+   * GitHub skills. Reads stay instant: caches return immediately and the
+   * revalidation runs in the background (stale-while-revalidate), so a
+   * refresh never blocks or freezes the surface.
    */
   async refresh(): Promise<void> {
     this.curatedCache = undefined
     this.discoveredCache = undefined
     this.treeCache.clear()
-    this.starsCache.clear()
-    this.descriptionCache.clear()
+    // Allow the next read to restore from the disk cache instead of blocking
+    // on a full re-discovery.
+    this.diskLoaded = false
   }
 
   /**
@@ -353,7 +399,7 @@ export class SkillPlazaService extends Service {
         discovered?: unknown
         descriptions?: unknown
       }
-      if (typeof parsed.savedAt === 'number' && Array.isArray(parsed.discovered)) {
+      if (typeof parsed.savedAt === 'number' && Array.isArray(parsed.discovered) && parsed.discovered.length > 0) {
         const entries: DiscoveredSkill[] = []
         for (const value of parsed.discovered) {
           if (validDiscovered(value)) entries.push(value)
@@ -399,7 +445,22 @@ export class SkillPlazaService extends Service {
 
   private async curated(): Promise<readonly CuratedSkill[]> {
     const cached = this.curatedCache
-    if (cached !== undefined && Date.now() - cached.at < this.cacheTtlMs) return cached.skills
+    if (cached !== undefined) {
+      if (Date.now() - cached.at < this.cacheTtlMs) return cached.skills
+      void this.revalidateCurated()
+      return cached.skills
+    }
+    return await this.revalidateCurated()
+  }
+
+  private curatedPending: Promise<readonly CuratedSkill[]> | undefined
+
+  private revalidateCurated(): Promise<readonly CuratedSkill[]> {
+    this.curatedPending ??= this.fetchCurated().finally(() => { this.curatedPending = undefined })
+    return this.curatedPending
+  }
+
+  private async fetchCurated(): Promise<readonly CuratedSkill[]> {
     try {
       const response = await fetch(this.indexUrl, { headers: { 'user-agent': 'dsh-skill-plaza' } })
       if (!response.ok) throw new Error(`index fetch failed (${response.status})`)
@@ -414,12 +475,37 @@ export class SkillPlazaService extends Service {
     } catch (error) {
       this.ctx.logger.warn(`skill-plaza: index fetch failed, using embedded fallback: ${errorMessage(error)}`)
     }
-    return CURATED_FALLBACK
+    return this.curatedCache?.skills ?? CURATED_FALLBACK
   }
 
   private async discovered(): Promise<readonly DiscoveredSkill[]> {
     const cached = this.discoveredCache
-    if (cached !== undefined && Date.now() - cached.at < this.cacheTtlMs) return cached.entries
+    if (cached !== undefined) {
+      if (Date.now() - cached.at < this.cacheTtlMs) return cached.entries
+      // Stale: serve immediately, revalidate in the background.
+      void this.revalidateDiscovered()
+      return cached.entries
+    }
+    // No memory cache: fall back to the disk cache and revalidate behind the scenes.
+    if (!this.diskLoaded) await this.loadCacheFromDisk()
+    const disk = this.discoveredCache
+    if (disk !== undefined) {
+      void this.revalidateDiscovered()
+      return disk.entries
+    }
+    // First run ever: block once on a synchronous discovery.
+    return await this.revalidateDiscovered()
+  }
+
+  private revalidatePending: Promise<readonly DiscoveredSkill[]> | undefined
+
+  private revalidateDiscovered(): Promise<readonly DiscoveredSkill[]> {
+    this.revalidatePending ??= this.discoverNow().finally(() => { this.revalidatePending = undefined })
+    return this.revalidatePending
+  }
+
+  private async discoverNow(): Promise<readonly DiscoveredSkill[]> {
+    const previous = this.discoveredCache?.entries
     try {
       const repos = new Map<string, string>()
       for (const seed of SEED_REPOS) repos.set(seed.repo, seed.ref)
@@ -482,12 +568,20 @@ export class SkillPlazaService extends Service {
         if (stars !== undefined) entry.stars = stars
       }
       const entries = [...byName.values()]
+      // A rate-limited discovery can enumerate nothing (or only a fraction)
+      // while a previous good catalog exists — never clobber a populated
+      // catalog with an empty or much smaller one, and never persist one.
+      if (entries.length === 0
+        || (previous !== undefined && previous.length > 0 && entries.length < previous.length / 2)) {
+        this.ctx.logger.warn(`skill-plaza: discovery returned ${entries.length}; keeping the previous catalog (${previous?.length ?? 0})`)
+        return previous ?? []
+      }
       this.discoveredCache = { at: Date.now(), entries }
       await this.saveCacheToDisk()
       return entries
     } catch (error) {
       this.ctx.logger.warn(`skill-plaza: discovery failed: ${errorMessage(error)}`)
-      return cached?.entries ?? []
+      return previous ?? []
     }
   }
 

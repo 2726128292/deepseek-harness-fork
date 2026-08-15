@@ -2806,6 +2806,9 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         ],
       }),
       search: request => ok(request, {
+        repos: [
+          { fullName: 'fixture/repo', description: 'fixture 仓库描述', stars: 999, language: 'TypeScript', skillCount: 1 },
+        ],
         skills: [
           { id: 'fixture-search-demo', name: 'fixture-search-demo', description: 'fixture GitHub 搜索结果', repo: 'fixture/repo', path: 'skills/fixture-search-demo', ref: 'main', stars: 999, source: 'discovered', installed: false },
         ],

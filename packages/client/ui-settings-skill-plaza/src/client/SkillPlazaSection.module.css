@@ -7,64 +7,6 @@
   color: var(--dsw-alias-label-primary);
 }
 
-.sectionHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.fullscreenButton {
-  flex: none;
-  height: 30px;
-  border: 1px solid var(--dsw-alias-border-l2);
-  border-radius: 8px;
-  padding: 0 12px;
-  background: var(--dsw-alias-bg-layer-1);
-  color: var(--dsw-alias-label-secondary);
-  font: inherit;
-  font-size: 12px;
-  line-height: 18px;
-  cursor: pointer;
-}
-
-.fullscreenButton:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-}
-
-.fullscreenOverlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  overflow: auto;
-  padding: 20px 24px 32px;
-  background: var(--dsw-alias-bg-layer-1);
-  color: var(--dsw-alias-label-primary);
-  scrollbar-width: thin;
-  scrollbar-color: var(--dsw-alias-scrollbar-bg-l2) transparent;
-}
-
-.fullscreenHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  max-width: 1100px;
-  margin: 0 auto 16px;
-}
-
-.fullscreenHeader h2 {
-  margin: 0;
-  font-size: 18px;
-  line-height: 26px;
-  font-weight: 600;
-}
-
-.fullscreenBody {
-  max-width: 1100px;
-  margin: 0 auto;
-}
-
 .heading,
 .intro,
 .catalogHeading h3,
@@ -517,26 +459,96 @@
 }
 
 /* Windows/Chromium scrollbars: slim, theme-aware. */
-.fullscreenOverlay::-webkit-scrollbar,
 .tabs::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-.fullscreenOverlay::-webkit-scrollbar-thumb,
 .tabs::-webkit-scrollbar-thumb {
   border-radius: 4px;
   background: var(--dsw-alias-scrollbar-bg-l2);
 }
 
-.fullscreenOverlay::-webkit-scrollbar-thumb:hover,
 .tabs::-webkit-scrollbar-thumb:hover {
   background: var(--dsw-alias-scrollbar-hover-l2);
 }
 
-.fullscreenOverlay::-webkit-scrollbar-track,
 .tabs::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* Online project cards (live GitHub search results). */
+.onlineSubHeading {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.repoCards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.repoCard {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--dsw-alias-bg-layer-2);
+}
+
+.repoTitleRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.repoTitle {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+  font-family: var(--ds-font-family-code);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repoMeta {
+  flex: none;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.repoDescription {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.repoMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
 }
 
 /* Card polish: soft hover lift, consistent corners. */
@@ -547,4 +559,10 @@
 .card:hover {
   border-color: var(--dsw-alias-border-l1);
   box-shadow: var(--dsw-shadow-lv1);
+}
+
+@media (max-width: 680px) {
+  .repoCards {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

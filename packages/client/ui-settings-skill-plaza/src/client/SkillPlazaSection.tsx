@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { PlazaSkillEntry } from '@deepseek-ai/dsh-client-connection/client'
+import type { PlazaRepoEntry, PlazaSkillEntry } from '@deepseek-ai/dsh-client-connection/client'
 import { IconSearchOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { zh as zhDict, type SkillPlazaLocaleKey } from './locales.ts'
@@ -48,7 +48,7 @@ export interface SkillPlazaSectionInjected {
   /** Read the merged plaza catalog. */
   list: () => Promise<readonly PlazaSkillEntry[]>
   /** Live GitHub search for repositories matching the query. */
-  search: (query: string) => Promise<readonly PlazaSkillEntry[]>
+  search: (query: string) => Promise<{ repos: readonly PlazaRepoEntry[]; skills: readonly PlazaSkillEntry[] }>
   /** Install one plaza skill into the user skill root. */
   install: (id: string) => Promise<void>
   /** Uninstall a user skill-root skill. */
@@ -93,7 +93,6 @@ export function SkillPlazaSection({
   const [lang, setLang] = useState<PlazaLang>(readLang)
   // UI copy stays Chinese; the language toggle only translates skill content.
   const t = (key: SkillPlazaLocaleKey): string => zhDict[key]
-  const [fullscreen, setFullscreen] = useState(false)
   const [request, setRequest] = useState(0)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'curated' | 'discovered' | 'hot' | 'daily'>('all')
@@ -102,7 +101,9 @@ export function SkillPlazaSection({
   const [busy, setBusy] = useState<ReadonlySet<string>>(() => new Set())
   const [refreshing, setRefreshing] = useState(false)
   const [searching, setSearching] = useState(false)
-  const [online, setOnline] = useState<{ query: string; entries: readonly PlazaSkillEntry[] } | undefined>()
+  const [online, setOnline] = useState<
+    { query: string; repos: readonly PlazaRepoEntry[]; skills: readonly PlazaSkillEntry[] } | undefined
+  >()
   const [actionError, setActionError] = useState<string | undefined>()
   const [state, setState] = useState<ViewState>({ status: 'loading' })
 
@@ -172,8 +173,8 @@ export function SkillPlazaSection({
     const timer = setTimeout(() => {
       setSearching(true)
       void search(trimmed).then(
-        (entries) => { if (current) setOnline({ query: trimmed, entries }) },
-        () => { if (current) setOnline({ query: trimmed, entries: [] }) },
+        (result) => { if (current) setOnline({ query: trimmed, repos: result.repos, skills: result.skills }) },
+        () => { if (current) setOnline({ query: trimmed, repos: [], skills: [] }) },
       ).finally(() => { if (current) setSearching(false) })
     }, 400)
     return () => { current = false; clearTimeout(timer) }
@@ -185,8 +186,8 @@ export function SkillPlazaSection({
     setActionError(undefined)
     setSearching(true)
     try {
-      const entries = await search(trimmed)
-      setOnline({ query: trimmed, entries })
+      const result = await search(trimmed)
+      setOnline({ query: trimmed, repos: result.repos, skills: result.skills })
     } catch {
       setActionError(t('actionError'))
     } finally {
@@ -236,21 +237,10 @@ export function SkillPlazaSection({
     }
   }
 
-  const body = (
+  return (
     <div className={css.section} aria-busy={state.status === 'loading' || refreshing}>
-      <div className={css.sectionHeader}>
-        <div>
-          <h2 className={css.heading}>{t('title')}</h2>
-          <p className={css.intro}>{t('intro')}</p>
-        </div>
-        <button
-          className={css.fullscreenButton}
-          type="button"
-          onClick={() => { setFullscreen(true) }}
-        >
-          {t('fullscreen')}
-        </button>
-      </div>
+      <h2 className={css.heading}>{t('title')}</h2>
+      <p className={css.intro}>{t('intro')}</p>
       {actionError !== undefined ? <p className={css.failure} role="alert">{actionError}</p> : null}
       {state.status === 'loading' ? <p className={css.status}>{t('loading')}</p> : null}
       {state.status === 'error' ? (
@@ -348,11 +338,39 @@ export function SkillPlazaSection({
                 <h3>{t('onlineResults')}</h3>
                 <span>{t('onlineQuery').replace('{query}', online.query)}</span>
               </div>
-              {online.entries.length === 0 ? (
+              {online.repos.length > 0 ? (
+                <>
+                  <h4 className={css.onlineSubHeading}>{t('projectsLabel')}</h4>
+                  <ul className={css.repoCards}>
+                    {online.repos.map(repo => (
+                      <li className={css.repoCard} key={repo.fullName}>
+                        <div className={css.repoTitleRow}>
+                          <strong className={css.repoTitle}>{repo.fullName}</strong>
+                          {repo.stars !== undefined ? (
+                            <span className={css.repoMeta}>{t('stars').replace('{count}', String(repo.stars))}</span>
+                          ) : null}
+                        </div>
+                        {repo.description !== undefined ? (
+                          <p className={css.repoDescription}>{repo.description}</p>
+                        ) : null}
+                        <div className={css.repoMetaRow}>
+                          {repo.language !== undefined ? <span>{repo.language}</span> : null}
+                          <span>{t('skillCountLabel').replace('{count}', String(repo.skillCount))}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+              {online.skills.length > 0 ? (
+                <>
+                  <h4 className={css.onlineSubHeading}>{t('skillsLabel')}</h4>
+                  {renderCards(online.skills, lang, busy, t, handleInstall, handleRemove)}
+                </>
+              ) : null}
+              {online.repos.length === 0 && online.skills.length === 0 ? (
                 <p className={css.status}>{t('noOnlineResults')}</p>
-              ) : (
-                renderCards(online.entries, lang, busy, t, handleInstall, handleRemove)
-              )}
+              ) : null}
             </div>
           ) : null}
           {filteredEntries.length > 0
@@ -360,24 +378,6 @@ export function SkillPlazaSection({
             : null}
         </div>
       ) : null}
-    </div>
-  )
-
-  if (!fullscreen) return body
-
-  return (
-    <div className={css.fullscreenOverlay} role="dialog" aria-label={t('title')}>
-      <div className={css.fullscreenHeader}>
-        <h2>{t('title')}</h2>
-        <button
-          className={css.fullscreenButton}
-          type="button"
-          onClick={() => { setFullscreen(false) }}
-        >
-          {t('exitFullscreen')}
-        </button>
-      </div>
-      <div className={css.fullscreenBody}>{body}</div>
     </div>
   )
 }

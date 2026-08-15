@@ -203,7 +203,7 @@ export class FakeApiClient implements IApiClient {
 
   readonly plaza: IApiClient['plaza'] = {
     list: (payload: unknown) => this.record('plaza.list', payload, Promise.resolve(ok({ skills: [] }))),
-    search: (payload: unknown) => this.record('plaza.search', payload, Promise.resolve(ok({ skills: [] }))),
+    search: (payload: unknown) => this.record('plaza.search', payload, Promise.resolve(ok({ repos: [], skills: [] }))),
     install: (payload: unknown) => this.record('plaza.install', payload, Promise.resolve(ok({ id: 'x', name: 'x' }))),
     refresh: (payload: unknown) => this.record('plaza.refresh', payload, Promise.resolve(ok({}))),
   }

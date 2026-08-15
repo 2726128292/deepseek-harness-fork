@@ -50,7 +50,7 @@ export function apply(ctx: ClientContext): void {
       if (!response.result.ok) {
         throw new Error(`plaza.search failed: ${response.result.error.code}: ${response.result.error.message}`)
       }
-      return response.result.value.skills
+      return response.result.value
     },
     install: async (id) => {
       const response = await api.plaza.install({ id })

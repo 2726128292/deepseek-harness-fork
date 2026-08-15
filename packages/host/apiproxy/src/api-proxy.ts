@@ -110,7 +110,7 @@ import {
 } from '@deepseek-ai/dsh-api-remotes'
 import { canOpenNativePath, openNativePath, openNativeTextFile } from './native-path-opener.ts'
 import type { SkillManagerEntry } from './api/skill-manager.ts'
-import type { PlazaSkillEntry } from './api/plaza.ts'
+import type { PlazaRepoEntry, PlazaSkillEntry } from './api/plaza.ts'
 
 /** Page size when history is called without maxMessages. */
 const DEFAULT_MAX_MESSAGES = 50
@@ -125,7 +125,7 @@ interface SkillManagerHostFace {
 /** Minimal structural face of the `ctx.plaza` service this proxy delegates to. */
 interface PlazaHostFace {
   list(): Promise<PlazaSkillEntry[]>
-  search(query: string): Promise<PlazaSkillEntry[]>
+  search(query: string): Promise<{ repos: PlazaRepoEntry[]; skills: PlazaSkillEntry[] }>
   install(id: string): Promise<{ id: string; name: string }>
   refresh(): Promise<void>
 }
@@ -3362,8 +3362,8 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           })
         }
         try {
-          const skills = await plaza.search(request.payload.query)
-          return ok(request, { skills })
+          const result = await plaza.search(request.payload.query)
+          return ok(request, result)
         } catch (error: unknown) {
           return err(request, { code: 'internal', message: `skill plaza search failed: ${String(error)}`, details: {} })
         }

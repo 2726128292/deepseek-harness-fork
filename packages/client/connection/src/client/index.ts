@@ -20,7 +20,7 @@ export type {
   ToolCallView, ToolResultView, WorkspaceApi, WorkspaceId, WorkspaceView,
   SkillsApi, SkillEntry,
   SkillManagerApi, SkillManagerEntry,
-  PlazaApi, PlazaSkillEntry,
+  PlazaApi, PlazaRepoEntry, PlazaSkillEntry,
   ModelCatalogFailure, ModelCatalogModel, ModelProviderGroup, ModelReasoning,
   MessageId, ModelReasoningEffort, ModelSelection, QueueAction, QueuedInboxItem, SessionModels,
   SubagentsApi, SubagentAddress, SubagentCatalog, SubagentListEntry, SubagentPromptReceipt,
@@ -51,13 +51,13 @@ export interface HostDescriptionSource {
   subscribe(listener: () => void): () => void
 }
 
-/** Required services (none — this is the wire root). */
+/** Required services (none 鈥?this is the wire root). */
 export const inject: string[] = []
 
 /**
  * The ctx.connection service API: the API client plus a one-shot
  * controller starter (the runtime plugin supplies sinks when its object layer
- * is ready — connection stays consumer-agnostic).
+ * is ready 鈥?connection stays consumer-agnostic).
  */
 export interface ConnectionHandle {
   /** Shared api client (fixture or real, decided at boot from the page URL). */
