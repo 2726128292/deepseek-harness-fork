@@ -42,6 +42,10 @@ import {
 } from '../api/workspace.schema.ts'
 import { skillListValueSchema } from '../api/skills.schema.ts'
 import {
+  skillManagerListValueSchema,
+  skillManagerSetEnabledValueSchema,
+} from '../api/skill-manager.schema.ts'
+import {
   agentPresetCopyValueSchema, agentPresetListValueSchema, agentPresetOpenDocumentValueSchema,
   agentPresetReadValueSchema, agentPresetRemoveValueSchema, agentPresetSelectValueSchema,
 } from '../api/agent-presets.schema.ts'
@@ -124,6 +128,10 @@ export interface IApiClient {
   skills: {
     list(payload: RequestPayload<'skill.list'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'skill.list'>>>
   }
+  skillManager: {
+    list(payload: RequestPayload<'skillManager.list'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'skillManager.list'>>>
+    setEnabled(payload: RequestPayload<'skillManager.setEnabled'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'skillManager.setEnabled'>>>
+  }
   agentPresets: {
     list(payload: RequestPayload<'agentPreset.list'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'agentPreset.list'>>>
     select(payload: RequestPayload<'agentPreset.select'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'agentPreset.select'>>>
@@ -199,6 +207,8 @@ const UNARY_VALUE_SCHEMAS: { [K in keyof RpcMethodMap]: z.ZodType<Wire<ResponseV
   'workspace.insertSessionBefore': workspaceInsertSessionBeforeValueSchema,
   'workspace.archiveSession': workspaceArchiveSessionValueSchema,
   'skill.list': skillListValueSchema,
+  'skillManager.list': skillManagerListValueSchema,
+  'skillManager.setEnabled': skillManagerSetEnabledValueSchema,
   'agentPreset.list': agentPresetListValueSchema,
   'agentPreset.select': agentPresetSelectValueSchema,
   'agentPreset.read': agentPresetReadValueSchema,
@@ -455,6 +465,11 @@ export abstract class AbstractApiClient implements IApiClient {
 
   readonly skills: IApiClient['skills'] = {
     list: (payload, signal) => this.callUnary('skill.list', payload, signal),
+  }
+
+  readonly skillManager: IApiClient['skillManager'] = {
+    list: (payload, signal) => this.callUnary('skillManager.list', payload, signal),
+    setEnabled: (payload, signal) => this.callUnary('skillManager.setEnabled', payload, signal),
   }
 
   // Annotated like every sibling, and load-bearing rather than cosmetic:

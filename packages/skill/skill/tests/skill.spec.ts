@@ -1269,3 +1269,52 @@ describe('SkillRegistry scoped layers', () => {
     await preset.dispose()
   })
 })
+
+describe('SkillRegistry enable/disable override', () => {
+  it('hides a disabled skill from every catalog and loader and re-enables it', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SkillRegistry)
+    ctx.skills.register({ name: 'alpha', description: 'Alpha skill', content: 'alpha body.', source: 'runtime' })
+    expect((await ctx.skills.list()).map(skill => skill.name)).toContain('alpha')
+    expect(await ctx.skills.get('alpha')).toBeDefined()
+
+    ctx.skills.setSkillEnabled('alpha', false)
+    expect(ctx.skills.isSkillEnabled('alpha')).toBe(false)
+    expect(ctx.skills.disabledSkillNames()).toContain('alpha')
+    expect((await ctx.skills.list()).map(skill => skill.name)).not.toContain('alpha')
+    expect(await ctx.skills.get('alpha')).toBeUndefined()
+    // Management surfaces keep seeing the disabled entry for re-enabling.
+    const admin = await ctx.skills.snapshot({ includeDisabled: true })
+    expect(admin.skills.map(skill => skill.name)).toContain('alpha')
+
+    ctx.skills.setSkillEnabled('alpha', true)
+    expect(ctx.skills.isSkillEnabled('alpha')).toBe(true)
+    expect(ctx.skills.disabledSkillNames()).not.toContain('alpha')
+    expect((await ctx.skills.list()).map(skill => skill.name)).toContain('alpha')
+    expect(await ctx.skills.get('alpha')).toBeDefined()
+  })
+
+  it('applies the override across layers, scopes, and invocation policy', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SkillRegistry)
+    const preset = createScope(ctx, { preset: 'disabled-layer' })
+    const provider = new MemoryProvider([memorySkill('layer-skill', 'Layer skill', 100)])
+    scopedSkills(preset.ctx).registerProvider(() => provider)
+    const scope = scopeOf(preset.ctx)
+    expect((await ctx.skills.list({ scope })).map(skill => skill.name)).toEqual(['layer-skill'])
+
+    ctx.skills.setSkillEnabled('layer-skill', false)
+    expect(await ctx.skills.list({ scope })).toEqual([])
+    expect(await ctx.skills.get('layer-skill', { scope })).toBeUndefined()
+    await preset.dispose()
+  })
+
+  it('rejects invalid names and accepts idempotent re-disabling', () => {
+    const ctx = new Context()
+    const registry = new SkillRegistry(ctx)
+    expect(() => registry.setSkillEnabled('Bad Name', false)).toThrow('invalid skill name')
+    registry.setSkillEnabled('alpha', false)
+    registry.setSkillEnabled('alpha', false)
+    expect(registry.disabledSkillNames()).toEqual(['alpha'])
+  })
+})

@@ -117,6 +117,12 @@ export interface SkillLookupOptions {
 export interface SkillViewOptions extends SkillLookupOptions {
   /** Viewing scope (the calling agent); omitted reads the global layer alone. */
   readonly scope?: ScopeKey | undefined
+  /**
+   * Include skills hidden by the host-level disable override in the catalog.
+   * Management surfaces (the skill manager) set this so a disabled skill
+   * stays visible for re-enabling; model and user surfaces omit it.
+   */
+  readonly includeDisabled?: boolean | undefined
 }
 
 /**
@@ -367,6 +373,13 @@ export class SkillRegistry extends Service {
   private readonly collectCache = new Map<string, Map<string, IndexedCandidate>>()
   private revision = 0
   private nextProviderOrder = 0
+  /**
+   * Host-level enable/disable override by skill name. The skill manager
+   * persists these names and applies them through {@link setSkillEnabled};
+   * disabled skills are hidden from every catalog and loader lookup,
+   * regardless of layer, scope, or invocation policy.
+   */
+  private readonly disabledSkills = new Set<string>()
   /** Stable identities for cache keys; scope keys are opaque identity-compared objects. */
   private readonly scopeIds = new WeakMap<ScopeKey, number>()
   private nextScopeId = 1
@@ -375,6 +388,47 @@ export class SkillRegistry extends Service {
     super(ctx, 'skills')
     this.collectCacheMaxEntries = config.collectCacheMaxEntries ?? DEFAULT_COLLECT_CACHE_ENTRIES
     assertPositiveInteger('collectCacheMaxEntries', this.collectCacheMaxEntries)
+  }
+
+  /**
+   * Set or clear the host-level disable override for one skill. Disabled
+   * skills disappear from every catalog snapshot and load as `undefined`, so
+   * the `skill` tool, the session catalog, and user invocation all stop
+   * seeing them. The change is applied immediately and invalidates cached
+   * catalogs; persistence is the caller's responsibility (the skill manager
+   * keeps the list on disk and replays it on boot).
+   * @param name - kebab-case skill name to enable or disable.
+   * @param enabled - `false` disables the skill, `true` re-enables it.
+   * @throws when `name` is not a valid skill name.
+   */
+  setSkillEnabled(name: string, enabled: boolean): void {
+    if (!isSkillName(name)) {
+      throw new Error(`setSkillEnabled: invalid skill name "${name}"`)
+    }
+    if (enabled) {
+      if (this.disabledSkills.delete(name)) this.invalidateCache()
+    } else if (!this.disabledSkills.has(name)) {
+      this.disabledSkills.add(name)
+      this.invalidateCache()
+    }
+  }
+
+  /**
+   * Return whether a skill name is currently hidden by the host-level
+   * disable override. Unknown names report enabled.
+   * @param name - kebab-case skill name.
+   * @returns `false` when the name is disabled, otherwise `true`.
+   */
+  isSkillEnabled(name: string): boolean {
+    return !this.disabledSkills.has(name)
+  }
+
+  /**
+   * Snapshot the currently disabled skill names in insertion order.
+   * @returns the disabled names, stable for the caller's current revision.
+   */
+  disabledSkillNames(): readonly string[] {
+    return [...this.disabledSkills]
   }
 
   /**
@@ -500,6 +554,7 @@ export class SkillRegistry extends Service {
    */
   async get(name: string, options: SkillViewOptions = {}): Promise<SkillDefinition | undefined> {
     if (!isSkillName(name)) return undefined
+    if (this.disabledSkills.has(name)) return undefined
     const collected = await this.collect(options)
     throwIfAborted(options.signal)
     const match = collected.entries.get(name)
@@ -565,7 +620,7 @@ export class SkillRegistry extends Service {
     return { entries: merged, cacheable }
   }
 
-  private async collectLayer(layer: SkillLayer, options: SkillLookupOptions): Promise<LayerCollectResult> {
+  private async collectLayer(layer: SkillLayer, options: SkillViewOptions): Promise<LayerCollectResult> {
     const collected = await this.listLayerCandidates(layer, options)
     collected.entries.sort(compareIndexedCandidates)
     const seen = new Set<string>()
@@ -576,6 +631,11 @@ export class SkillRegistry extends Service {
         this.ctx.logger.warn(`skill "${skill.name}" from ${skill.source} ignored because a higher-priority skill already exists`)
         continue
       }
+      // The host-level disable override hides a name from every layer, so a
+      // disabled project skill cannot shadow an enabled user skill or vice
+      // versa — one switch controls the merged catalog. Management surfaces
+      // opt into seeing disabled entries through includeDisabled.
+      if (options.includeDisabled !== true && this.disabledSkills.has(skill.name)) continue
       seen.add(skill.name)
       result.push(entry)
     }

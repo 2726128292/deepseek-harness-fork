@@ -1,0 +1,64 @@
+/** Copy dictionaries for the Skill management Settings section. */
+
+/** Simplified Chinese dictionary and key source of truth. */
+export const zh = {
+  nav: '技能管理',
+  title: '技能管理',
+  intro: '统一查看与管理 DeepSeek Harness 中的技能（Skill）：启用或停用任意技能，停用后模型目录、skill 工具与 /名称 调用都会立即停止看到它。',
+  loading: '正在读取技能…',
+  error: '暂时无法读取技能。',
+  actionError: '操作失败，请重试。',
+  retry: '重试',
+  refresh: '刷新',
+  search: '搜索技能',
+  catalog: '技能列表',
+  empty: '暂无可用技能。',
+  emptySearch: '没有匹配的技能。',
+  enabled: '已启用',
+  disabled: '已停用',
+  enable: '启用',
+  disable: '停用',
+  enabling: '启用中…',
+  disabling: '停用中…',
+  modelSurface: '模型可用',
+  userSurface: '用户可用',
+  onlyUser: '仅用户',
+  source: '来源',
+  provider: '提供方',
+  whenToUse: '适用场景',
+  details: '详情',
+  count: '共 {count} 个',
+} satisfies Record<string, string>
+
+/** Skill management locale key union. */
+export type SkillManagerLocaleKey = keyof typeof zh
+
+/** English dictionary checked against the Chinese key set. */
+export const en = {
+  nav: 'Skills',
+  title: 'Skill Management',
+  intro: 'Browse and manage every skill in DeepSeek Harness: enabling or disabling a skill takes effect immediately on the model catalog, the skill tool, and /name invocation.',
+  loading: 'Reading skills…',
+  error: 'Skills are temporarily unavailable.',
+  actionError: 'The operation failed, please retry.',
+  retry: 'Retry',
+  refresh: 'Refresh',
+  search: 'Search skills',
+  catalog: 'Skill list',
+  empty: 'No skills are available.',
+  emptySearch: 'No matching skills.',
+  enabled: 'Enabled',
+  disabled: 'Disabled',
+  enable: 'Enable',
+  disable: 'Disable',
+  enabling: 'Enabling…',
+  disabling: 'Disabling…',
+  modelSurface: 'Model',
+  userSurface: 'User',
+  onlyUser: 'User only',
+  source: 'Source',
+  provider: 'Provider',
+  whenToUse: 'When to use',
+  details: 'Details',
+  count: '{count} total',
+} satisfies Record<SkillManagerLocaleKey, string>

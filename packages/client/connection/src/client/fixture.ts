@@ -2789,6 +2789,15 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         })
       },
     },
+    skillManager: {
+      list: request => ok(request, {
+        skills: [
+          { name: 'fixture-demo', description: 'fixture 技能样本', whenToUse: '仅供 UI 目录渲染验收', modelInvocable: true, userInvocable: true, source: 'user-dsh', provider: 'filesystem', disabled: false },
+          { name: 'fixture-user-only', description: 'fixture 仅用户技能样本', modelInvocable: false, userInvocable: true, source: 'user-dsh', provider: 'filesystem', disabled: false },
+        ],
+      }),
+      setEnabled: request => ok(request, {}),
+    },
     goals: {
       // Compatibility face only: old API Proxy payloads and acknowledgements
       // adapt to the canonical fixture Remote implementation above.
@@ -3106,6 +3115,8 @@ export class FixtureApiClient extends AbstractApiClient {
       case 'workspace.insertSessionBefore': return this.api.workspace.insertSessionBefore(request)
       case 'workspace.archiveSession': return this.api.workspace.archiveSession(request)
       case 'skill.list': return this.api.skills.list(request)
+      case 'skillManager.list': return this.api.skillManager.list(request)
+      case 'skillManager.setEnabled': return this.api.skillManager.setEnabled(request)
       case 'agentPreset.list': return this.api.agentPresets.list(request)
       case 'agentPreset.select': return this.api.agentPresets.select(request)
       case 'agentPreset.read': return this.api.agentPresets.read(request)

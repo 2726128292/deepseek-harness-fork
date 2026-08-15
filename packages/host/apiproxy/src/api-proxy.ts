@@ -109,9 +109,16 @@ import {
   inspectApiRemoteSession,
 } from '@deepseek-ai/dsh-api-remotes'
 import { canOpenNativePath, openNativePath, openNativeTextFile } from './native-path-opener.ts'
+import type { SkillManagerEntry } from './api/skill-manager.ts'
 
 /** Page size when history is called without maxMessages. */
 const DEFAULT_MAX_MESSAGES = 50
+
+/** Minimal structural face of the `ctx.skillManager` service this proxy delegates to. */
+interface SkillManagerHostFace {
+  list(): Promise<SkillManagerEntry[]>
+  setEnabled(name: string, enabled: boolean): Promise<void>
+}
 
 /**
  * Non-model settings namespaces intentionally served to the Web client. The
@@ -3253,6 +3260,46 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           })
         } catch (error: unknown) {
           return err(request, { code: 'internal', message: `skill listing failed: ${String(error)}`, details: {} })
+        }
+      },
+    },
+
+    // Session-free management surface for the Settings → Skills panel: the
+    // host resolves the merged catalog (global layer + every preset's standing
+    // scope layer) and the persisted disable override itself. Both methods
+    // delegate to the skill-manager service; an absent service means the host
+    // composition does not mount @deepseek-ai/dsh-skill-manager.
+    skillManager: {
+      async list(request) {
+        const manager = ctx.get('skillManager') as SkillManagerHostFace | undefined
+        if (manager === undefined) {
+          return err(request, {
+            code: 'internal',
+            message: 'skill manager is absent: the host composition does not mount @deepseek-ai/dsh-skill-manager',
+            details: {},
+          })
+        }
+        try {
+          const skills = await manager.list()
+          return ok(request, { skills })
+        } catch (error: unknown) {
+          return err(request, { code: 'internal', message: `skill manager listing failed: ${String(error)}`, details: {} })
+        }
+      },
+      async setEnabled(request) {
+        const manager = ctx.get('skillManager') as SkillManagerHostFace | undefined
+        if (manager === undefined) {
+          return err(request, {
+            code: 'internal',
+            message: 'skill manager is absent: the host composition does not mount @deepseek-ai/dsh-skill-manager',
+            details: {},
+          })
+        }
+        try {
+          await manager.setEnabled(request.payload.name, request.payload.enabled)
+          return ok(request, {})
+        } catch (error: unknown) {
+          return err(request, { code: 'internal', message: `skill manager update failed: ${String(error)}`, details: {} })
         }
       },
     },
