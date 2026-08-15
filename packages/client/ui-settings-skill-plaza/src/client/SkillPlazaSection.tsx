@@ -53,6 +53,9 @@ function displayDescription(entry: PlazaSkillEntry): string {
 export function SkillPlazaSection({ t, list, install, refresh }: SkillPlazaSectionProps): ReactNode {
   const [request, setRequest] = useState(0)
   const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState<'all' | 'curated' | 'discovered'>('all')
+  const [uninstalledOnly, setUninstalledOnly] = useState(false)
+  const [notice, setNotice] = useState<string | undefined>()
   const [busy, setBusy] = useState<ReadonlySet<string>>(() => new Set())
   const [refreshing, setRefreshing] = useState(false)
   const [actionError, setActionError] = useState<string | undefined>()
@@ -89,19 +92,24 @@ export function SkillPlazaSection({ t, list, install, refresh }: SkillPlazaSecti
   const normalizedQuery = query.trim().toLocaleLowerCase()
   const filteredEntries = useMemo(
     () => state.status === 'ready'
-      ? state.entries.filter(entry => matches(entry, normalizedQuery))
+      ? state.entries.filter(entry =>
+        (filter === 'all' || entry.source === filter)
+        && (!uninstalledOnly || !entry.installed)
+        && matches(entry, normalizedQuery))
       : [],
-    [normalizedQuery, state],
+    [filter, normalizedQuery, state, uninstalledOnly],
   )
 
   const handleInstall = async (entry: PlazaSkillEntry): Promise<void> => {
     setActionError(undefined)
+    setNotice(undefined)
     setBusy(previous => new Set([...previous, entry.id]))
     try {
       await install(entry.id)
       setState(current => current.status === 'ready'
         ? { status: 'ready', entries: current.entries.map(item => item.id === entry.id ? { ...item, installed: true } : item) }
         : current)
+      setNotice(t('installedNotice').replace('{name}', displayName(entry)))
     } catch {
       setActionError(`${t('installFailed')}: ${displayName(entry)}`)
     } finally {
@@ -127,6 +135,7 @@ export function SkillPlazaSection({ t, list, install, refresh }: SkillPlazaSecti
       ) : null}
       {state.status === 'ready' ? (
         <div className={css.catalog}>
+          {notice !== undefined ? <p className={css.notice} role="status">{notice}</p> : null}
           <div className={css.toolbar}>
             <label className={css.search}>
               <IconSearchOutline16 aria-hidden="true" />
@@ -142,6 +151,30 @@ export function SkillPlazaSection({ t, list, install, refresh }: SkillPlazaSecti
             <button className={css.refresh} type="button" disabled={refreshing} onClick={() => { void handleRefresh() }}>
               {refreshing ? t('refreshing') : t('refresh')}
             </button>
+          </div>
+          <div className={css.filterRow}>
+            <div className={css.tabs} role="group" aria-label={t('catalog')}>
+              {(['all', 'curated', 'discovered'] as const).map(mode => (
+                <button
+                  key={mode}
+                  type="button"
+                  className={css.tab}
+                  data-active={filter === mode ? 'true' : undefined}
+                  aria-pressed={filter === mode}
+                  onClick={() => { setFilter(mode) }}
+                >
+                  {t(mode === 'all' ? 'allTab' : mode === 'curated' ? 'curatedTab' : 'discoveredTab')}
+                </button>
+              ))}
+            </div>
+            <label className={css.uninstalledOnly}>
+              <input
+                type="checkbox"
+                checked={uninstalledOnly}
+                onChange={(event) => { setUninstalledOnly(event.currentTarget.checked) }}
+              />
+              {t('uninstalledOnly')}
+            </label>
           </div>
           <div className={css.catalogHeading}>
             <h3>{t('catalog')}</h3>

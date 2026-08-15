@@ -27,6 +27,11 @@ export const zh = {
   official: '官方',
   community: '社区',
   updated: '上次更新',
+  allTab: '全部',
+  curatedTab: '精选',
+  discoveredTab: '自动发现',
+  uninstalledOnly: '只看未安装',
+  installedNotice: '已安装「{name}」，可在技能管理中查看',
 } satisfies Record<string, string>
 
 /** Skill Plaza locale key union. */
@@ -59,4 +64,9 @@ export const en = {
   official: 'Official',
   community: 'Community',
   updated: 'Last updated',
+  allTab: 'All',
+  curatedTab: 'Curated',
+  discoveredTab: 'Discovered',
+  uninstalledOnly: 'Uninstalled only',
+  installedNotice: 'Installed "{name}" — see it in Skill Management',
 } satisfies Record<SkillPlazaLocaleKey, string>

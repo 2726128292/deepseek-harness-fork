@@ -22,7 +22,7 @@
  * @module @deepseek-ai/dsh-skill-plaza
  */
 
-import { access, mkdir, readdir, writeFile } from 'node:fs/promises'
+import { access, mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
@@ -73,7 +73,10 @@ export interface Config {
 
 const DEFAULT_INDEX_URL = 'https://raw.githubusercontent.com/2726128292/deepseek-harness-fork/master/skill-plaza/plaza.json'
 const DEFAULT_CACHE_TTL_MS = 60 * 60 * 1000
-const SEARCH_QUERIES = ['claude skills', 'agent skills', 'skill pack', 'agentic skills']
+/** Repository search queries (best-effort; failures must not kill discovery). */
+const SEARCH_QUERIES = ['claude skills', 'agent skills']
+/** Maximum candidate repositories enumerated per discovery pass (bounds anonymous API use). */
+const MAX_DISCOVER_REPOS = 15
 const SEED_REPOS = [
   { repo: 'anthropics/skills', ref: 'main' },
   { repo: 'obra/superpowers', ref: 'main' },
@@ -90,7 +93,8 @@ interface DiscoveredSkill {
   readonly repo: string
   readonly path: string
   readonly ref: string
-  readonly stars?: number
+  /** Filled best-effort after enumeration (core-API rate limited). */
+  stars?: number
   readonly description: string
 }
 
@@ -111,11 +115,16 @@ export class SkillPlazaService extends Service {
   private readonly indexUrl: string
   private readonly cacheTtlMs: number
   private readonly token: string | undefined
+  private readonly cacheFile: string
   private curatedCache: { at: number; skills: CuratedSkill[] } | undefined
   private discoveredCache: { at: number; entries: DiscoveredSkill[] } | undefined
   private readonly treeCache = new Map<string, Promise<TreeBlob[]>>()
   private readonly starsCache = new Map<string, number | undefined>()
   private readonly installing = new Set<string>()
+  private readonly descriptionCache = new Map<string, string>()
+  private enrichPending = false
+  private diskLoaded = false
+  private savePending = false
 
   constructor(ctx: Context, config: Config = {}) {
     super(ctx, 'plaza')
@@ -124,6 +133,12 @@ export class SkillPlazaService extends Service {
     this.indexUrl = config.indexUrl ?? process.env.DSH_SKILL_PLAZA_INDEX ?? DEFAULT_INDEX_URL
     this.cacheTtlMs = config.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS
     this.token = config.githubToken ?? process.env.DSH_GITHUB_TOKEN
+    this.cacheFile = join(dshHome, 'skill-plaza-cache.json')
+  }
+
+  /** Restore the persisted discovery/description caches after construction. */
+  protected async [Service.init](): Promise<void> {
+    await this.loadCacheFromDisk()
   }
 
   /**
@@ -144,8 +159,15 @@ export class SkillPlazaService extends Service {
     for (const skill of discovered) {
       if (seen.has(skill.id)) continue
       seen.add(skill.id)
-      entries.push({ ...skill, source: 'discovered', installed: installed.has(skill.name) })
+      const enriched = this.descriptionCache.get(skill.id)
+      entries.push(enriched === undefined
+        ? { ...skill, source: 'discovered', installed: installed.has(skill.name) }
+        : { ...skill, description: enriched, source: 'discovered', installed: installed.has(skill.name) })
     }
+    // Background enrichment: fetch real SKILL.md descriptions for discovered
+    // skills so the next read (or a refresh) shows what each skill does. The
+    // raw.githubusercontent.com channel is not rate-limited like the API.
+    void this.enrichDiscovered(discovered)
     return entries.sort((left, right) => {
       if (left.source !== right.source) return left.source === 'curated' ? -1 : 1
       return (right.stars ?? 0) - (left.stars ?? 0)
@@ -210,6 +232,102 @@ export class SkillPlazaService extends Service {
     this.discoveredCache = undefined
     this.treeCache.clear()
     this.starsCache.clear()
+    this.descriptionCache.clear()
+  }
+
+  /**
+   * Fetch real SKILL.md descriptions for discovered skills in the background
+   * (bounded concurrency, single-flight per catalog generation). Runs once
+   * per catalog refresh; results land in {@link descriptionCache} and are
+   * applied to the next `list()` read. Failures keep the "From repo" label.
+   * @param discovered - the discovered catalog to enrich.
+   */
+  private async enrichDiscovered(discovered: readonly DiscoveredSkill[]): Promise<void> {
+    if (this.enrichPending) return
+    this.enrichPending = true
+    try {
+      const targets = discovered.filter(entry => this.descriptionCache.get(entry.id) === undefined)
+      let cursor = 0
+      const workers = Array.from({ length: 6 }, async () => {
+        while (cursor < targets.length) {
+          const entry = targets[cursor]
+          cursor += 1
+          if (entry === undefined) continue
+          try {
+            const response = await fetch(
+              `https://raw.githubusercontent.com/${entry.repo}/${entry.ref}/${entry.path}/SKILL.md`,
+              { headers: { 'user-agent': 'dsh-skill-plaza' } },
+            )
+            if (!response.ok) continue
+            const description = parseFrontmatterDescription(await response.text())
+            if (description !== undefined && description.length > 0) {
+              this.descriptionCache.set(entry.id, description)
+            }
+          } catch {
+            // Keep the "From repo" label; a transient failure must not poison the catalog.
+          }
+        }
+      })
+      await Promise.all(workers)
+      await this.saveCacheToDisk()
+    } finally {
+      this.enrichPending = false
+    }
+  }
+
+  /** Restore the persisted discovery and description caches (first boot only). */
+  private async loadCacheFromDisk(): Promise<void> {
+    if (this.diskLoaded) return
+    this.diskLoaded = true
+    try {
+      const raw = await readFile(this.cacheFile, 'utf8')
+      const parsed = JSON.parse(raw) as {
+        savedAt?: unknown
+        discovered?: unknown
+        descriptions?: unknown
+      }
+      if (typeof parsed.savedAt === 'number' && Array.isArray(parsed.discovered)) {
+        const entries: DiscoveredSkill[] = []
+        for (const value of parsed.discovered) {
+          if (validDiscovered(value)) entries.push(value)
+        }
+        if (entries.length > 0) {
+          this.discoveredCache = { at: parsed.savedAt, entries }
+        }
+      }
+      if (parsed.descriptions !== null && typeof parsed.descriptions === 'object') {
+        for (const [key, value] of Object.entries(parsed.descriptions as Record<string, unknown>)) {
+          if (typeof value === 'string') this.descriptionCache.set(key, value)
+        }
+      }
+    } catch {
+      // No cache file yet — first run.
+    }
+  }
+
+  /** Schedule a coalesced cache write; skip while a flush is already pending. */
+  private saveCacheToDisk(): Promise<void> {
+    if (this.savePending) return Promise.resolve()
+    this.savePending = true
+    return this.flushCacheToDisk()
+  }
+
+  private async flushCacheToDisk(): Promise<void> {
+    try {
+      await mkdir(dirname(this.cacheFile), { recursive: true })
+      const payload = JSON.stringify({
+        savedAt: this.discoveredCache?.at ?? Date.now(),
+        discovered: this.discoveredCache?.entries ?? [],
+        descriptions: Object.fromEntries(this.descriptionCache),
+      })
+      const temporary = `${this.cacheFile}.tmp`
+      await writeFile(temporary, payload, 'utf8')
+      await rename(temporary, this.cacheFile)
+    } catch (error) {
+      this.ctx.logger.warn(`skill-plaza: cache write failed: ${errorMessage(error)}`)
+    } finally {
+      this.savePending = false
+    }
   }
 
   private async curated(): Promise<readonly CuratedSkill[]> {
@@ -238,22 +356,30 @@ export class SkillPlazaService extends Service {
     try {
       const repos = new Map<string, string>()
       for (const seed of SEED_REPOS) repos.set(seed.repo, seed.ref)
+      // Search is best-effort: a rate limit or network failure must not
+      // collapse the catalog — the seeds plus whatever results landed stay.
       for (const query of SEARCH_QUERIES) {
-        const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=20`
-        const data = (await this.githubJson(url)) as {
-          items?: { full_name?: unknown; default_branch?: unknown }[]
-        }
-        for (const item of data.items ?? []) {
-          if (typeof item.full_name === 'string' && typeof item.default_branch === 'string') {
-            repos.set(item.full_name, item.default_branch)
+        try {
+          const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=20`
+          const data = (await this.githubJson(url)) as {
+            items?: { full_name?: unknown; default_branch?: unknown }[]
           }
+          for (const item of data.items ?? []) {
+            if (typeof item.full_name === 'string' && typeof item.default_branch === 'string') {
+              repos.set(item.full_name, item.default_branch)
+            }
+          }
+        } catch (error) {
+          this.ctx.logger.warn(`skill-plaza: repository search "${query}" failed: ${errorMessage(error)}`)
         }
       }
+      // Bound the enumerated candidate set so one anonymous-hour budget can
+      // complete a full discovery pass (trees + stars are core-API calls).
+      const candidates = [...repos.entries()].slice(0, MAX_DISCOVER_REPOS)
       const byName = new Map<string, DiscoveredSkill>()
-      for (const [repo, ref] of repos) {
+      for (const [repo, ref] of candidates) {
         try {
           const tree = await this.tree(repo, ref)
-          const stars = await this.repoStars(repo)
           for (const blob of tree) {
             if (blob.type !== 'blob') continue
             const match = blob.path.match(/^(?:skills\/)?([^/]+)\/SKILL\.md$/)
@@ -262,14 +388,13 @@ export class SkillPlazaService extends Service {
             if (name === undefined || !isSkillName(name)) continue
             const directory = blob.path.slice(0, -'SKILL.md'.length - 1)
             const existing = byName.get(name)
-            if (existing !== undefined && (stars ?? 0) <= (existing.stars ?? 0)) continue
+            if (existing !== undefined) continue
             byName.set(name, {
               id: `${repo}/${directory}`,
               name,
               repo,
               path: directory,
               ref,
-              ...stars === undefined ? {} : { stars },
               description: `From ${repo}`,
             })
           }
@@ -277,8 +402,21 @@ export class SkillPlazaService extends Service {
           this.ctx.logger.warn(`skill-plaza: scanning ${repo} failed: ${errorMessage(error)}`)
         }
       }
+      // Star counts are cosmetic and rate-limited; fill them best-effort for
+      // the repositories that actually yielded skills.
+      const starRepos = new Set([...byName.values()].map(entry => entry.repo))
+      const starsByRepo = new Map<string, number>()
+      for (const repo of starRepos) {
+        const stars = await this.repoStars(repo)
+        if (stars !== undefined) starsByRepo.set(repo, stars)
+      }
+      for (const entry of byName.values()) {
+        const stars = starsByRepo.get(entry.repo)
+        if (stars !== undefined) entry.stars = stars
+      }
       const entries = [...byName.values()]
       this.discoveredCache = { at: Date.now(), entries }
+      await this.saveCacheToDisk()
       return entries
     } catch (error) {
       this.ctx.logger.warn(`skill-plaza: discovery failed: ${errorMessage(error)}`)
@@ -366,6 +504,26 @@ function validCurated(value: unknown): value is CuratedSkill {
     && typeof candidate.repo === 'string'
     && typeof candidate.path === 'string'
     && typeof candidate.ref === 'string'
+}
+
+/** Extract the `description:` line from a skill's YAML frontmatter, when present. */
+function parseFrontmatterDescription(raw: string): string | undefined {
+  const match = raw.match(/^description:\s*(.+)$/m)
+  if (match === null) return undefined
+  const value = match[1]?.trim().replace(/^['"]|['"]$/g, '')
+  return value === undefined || value.length === 0 ? undefined : value
+}
+
+/** Validate a persisted discovered entry before trusting it back into memory. */
+function validDiscovered(value: unknown): value is DiscoveredSkill {
+  if (typeof value !== 'object' || value === null) return false
+  const candidate = value as Record<string, unknown>
+  return typeof candidate.id === 'string'
+    && typeof candidate.name === 'string'
+    && typeof candidate.repo === 'string'
+    && typeof candidate.path === 'string'
+    && typeof candidate.ref === 'string'
+    && typeof candidate.description === 'string'
 }
 
 async function pathExists(path: string): Promise<boolean> {
