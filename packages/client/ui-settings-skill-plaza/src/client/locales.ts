@@ -38,6 +38,8 @@ export const zh = {
   allTab: '全部',
   curatedTab: '精选',
   discoveredTab: '自动发现',
+  hotTab: '热门推荐',
+  dailyTab: '每日精选',
   uninstalledOnly: '只看未安装',
   installedNotice: '已安装「{name}」，可在技能管理中查看',
 } satisfies Record<string, string>
@@ -83,6 +85,8 @@ export const en = {
   allTab: 'All',
   curatedTab: 'Curated',
   discoveredTab: 'Discovered',
+  hotTab: 'Trending',
+  dailyTab: 'Daily picks',
   uninstalledOnly: 'Uninstalled only',
   installedNotice: 'Installed "{name}" — see it in Skill Management',
 } satisfies Record<SkillPlazaLocaleKey, string>

@@ -9,8 +9,39 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { PlazaSkillEntry } from '@deepseek-ai/dsh-client-connection/client'
 import { IconSearchOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SkillPlazaLocaleKey } from './locales.ts'
+import { en as enDict, zh as zhDict, type SkillPlazaLocaleKey } from './locales.ts'
 import css from './SkillPlazaSection.module.css'
+
+/** Plaza display language: English shows the original text; Chinese shows
+ * translations when the index provides them (untranslated entries stay as-is). */
+type PlazaLang = 'zh' | 'en'
+
+const LANG_STORAGE_KEY = 'dsh-plaza-lang'
+
+function readLang(): PlazaLang {
+  if (typeof localStorage === 'undefined') return 'en'
+  const stored = localStorage.getItem(LANG_STORAGE_KEY)
+  return stored === 'zh' || stored === 'en' ? stored : 'en'
+}
+
+/** Deterministic daily pick from a pool, seeded by the calendar date. */
+function dailyPick(entries: readonly PlazaSkillEntry[], count: number, seedDate: string): PlazaSkillEntry[] {
+  const pool = entries.filter(entry => entry.source === 'curated')
+  if (pool.length === 0) return []
+  let hash = 0
+  for (const char of seedDate) hash = (hash * 31 + char.charCodeAt(0)) >>> 0
+  const picked: PlazaSkillEntry[] = []
+  const used = new Set<number>()
+  while (picked.length < Math.min(count, pool.length)) {
+    hash = (hash * 1103515245 + 12345) >>> 0
+    const index = hash % pool.length
+    if (used.has(index)) continue
+    used.add(index)
+    const entry = pool[index]
+    if (entry !== undefined) picked.push(entry)
+  }
+  return picked
+}
 
 /** Registration-side business face used by the section. */
 export interface SkillPlazaSectionInjected {
@@ -45,20 +76,26 @@ function matches(entry: PlazaSkillEntry, normalizedQuery: string): boolean {
     .some(value => value.toLocaleLowerCase().includes(normalizedQuery))
 }
 
-/** Read a string field from entry metadata safely. */
-function displayName(entry: PlazaSkillEntry): string {
-  return entry.nameZh ?? entry.name
+/** Display name in the active language: Chinese prefers the zh field, English the original. */
+function localizedName(entry: PlazaSkillEntry, lang: PlazaLang): string {
+  return lang === 'zh' ? entry.nameZh ?? entry.name : entry.name
 }
 
-function displayDescription(entry: PlazaSkillEntry): string {
-  return entry.descriptionZh ?? entry.description
+/** Display description in the active language: Chinese prefers the zh field, English the original. */
+function localizedDescription(entry: PlazaSkillEntry, lang: PlazaLang): string {
+  return lang === 'zh' ? entry.descriptionZh ?? entry.description : entry.description
 }
 
 /** Render the Skill Plaza section. */
-export function SkillPlazaSection({ t, list, search, install, remove, refresh }: SkillPlazaSectionProps): ReactNode {
+export function SkillPlazaSection({
+  list, search, install, remove, refresh,
+}: SkillPlazaSectionProps): ReactNode {
+  const [lang, setLang] = useState<PlazaLang>(readLang)
+  const dict = lang === 'zh' ? zhDict : enDict
+  const t = (key: SkillPlazaLocaleKey): string => dict[key]
   const [request, setRequest] = useState(0)
   const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState<'all' | 'curated' | 'discovered'>('all')
+  const [filter, setFilter] = useState<'all' | 'curated' | 'discovered' | 'hot' | 'daily'>('all')
   const [uninstalledOnly, setUninstalledOnly] = useState(false)
   const [notice, setNotice] = useState<string | undefined>()
   const [busy, setBusy] = useState<ReadonlySet<string>>(() => new Set())
@@ -67,6 +104,11 @@ export function SkillPlazaSection({ t, list, search, install, remove, refresh }:
   const [online, setOnline] = useState<{ query: string; entries: readonly PlazaSkillEntry[] } | undefined>()
   const [actionError, setActionError] = useState<string | undefined>()
   const [state, setState] = useState<ViewState>({ status: 'loading' })
+
+  const switchLang = (next: PlazaLang): void => {
+    setLang(next)
+    if (typeof localStorage !== 'undefined') localStorage.setItem(LANG_STORAGE_KEY, next)
+  }
 
   useEffect(() => {
     let current = true
@@ -97,15 +139,23 @@ export function SkillPlazaSection({ t, list, search, install, remove, refresh }:
   }
 
   const normalizedQuery = query.trim().toLocaleLowerCase()
-  const filteredEntries = useMemo(
-    () => state.status === 'ready'
-      ? state.entries.filter(entry =>
-        (filter === 'all' || entry.source === filter)
-        && (!uninstalledOnly || !entry.installed)
-        && matches(entry, normalizedQuery))
-      : [],
-    [filter, normalizedQuery, state, uninstalledOnly],
-  )
+  const filteredEntries = useMemo(() => {
+    if (state.status !== 'ready') return []
+    const base = state.entries.filter(entry =>
+      (filter === 'all' || filter === 'hot' || filter === 'daily' || entry.source === filter)
+      && (!uninstalledOnly || !entry.installed)
+      && matches(entry, normalizedQuery))
+    if (filter === 'hot') {
+      return base
+        .filter(entry => entry.stars !== undefined)
+        .sort((left, right) => (right.stars ?? 0) - (left.stars ?? 0))
+        .slice(0, 30)
+    }
+    if (filter === 'daily') {
+      return dailyPick(state.entries, 10, new Date().toISOString().slice(0, 10))
+    }
+    return base
+  }, [filter, normalizedQuery, state, uninstalledOnly])
 
   // Local-first search: when the query matches nothing in the local catalog
   // (and is long enough to be meaningful), auto-search GitHub for matching
@@ -152,9 +202,9 @@ export function SkillPlazaSection({ t, list, search, install, remove, refresh }:
       setState(current => current.status === 'ready'
         ? { status: 'ready', entries: current.entries.map(item => item.id === entry.id ? { ...item, installed: true } : item) }
         : current)
-      setNotice(t('installedNotice').replace('{name}', displayName(entry)))
+      setNotice(t('installedNotice').replace('{name}', localizedName(entry, lang)))
     } catch {
-      setActionError(`${t('installFailed')}: ${displayName(entry)}`)
+      setActionError(`${t('installFailed')}: ${localizedName(entry, lang)}`)
     } finally {
       setBusy((previous) => {
         const next = new Set(previous)
@@ -165,7 +215,7 @@ export function SkillPlazaSection({ t, list, search, install, remove, refresh }:
   }
 
   const handleRemove = async (entry: PlazaSkillEntry): Promise<void> => {
-    if (!globalThis.confirm(`${t('uninstallConfirm')}「${displayName(entry)}」？`)) return
+    if (!globalThis.confirm(`${t('uninstallConfirm')}「${localizedName(entry, lang)}」？`)) return
     setActionError(undefined)
     setNotice(undefined)
     setBusy(previous => new Set([...previous, entry.id]))
@@ -175,7 +225,7 @@ export function SkillPlazaSection({ t, list, search, install, remove, refresh }:
         ? { status: 'ready', entries: current.entries.map(item => item.id === entry.id ? { ...item, installed: false } : item) }
         : current)
     } catch {
-      setActionError(`${t('installFailed')}: ${displayName(entry)}`)
+      setActionError(`${t('installFailed')}: ${localizedName(entry, lang)}`)
     } finally {
       setBusy((previous) => {
         const next = new Set(previous)
@@ -226,10 +276,28 @@ export function SkillPlazaSection({ t, list, search, install, remove, refresh }:
             <button className={css.refresh} type="button" disabled={refreshing} onClick={() => { void handleRefresh() }}>
               {refreshing ? t('refreshing') : t('refresh')}
             </button>
+            <div className={css.langSwitch} role="group" aria-label="Language">
+              <button
+                type="button"
+                className={css.langButton}
+                data-active={lang === 'zh' ? 'true' : undefined}
+                onClick={() => { switchLang('zh') }}
+              >
+                中文
+              </button>
+              <button
+                type="button"
+                className={css.langButton}
+                data-active={lang === 'en' ? 'true' : undefined}
+                onClick={() => { switchLang('en') }}
+              >
+                EN
+              </button>
+            </div>
           </div>
           <div className={css.filterRow}>
             <div className={css.tabs} role="group" aria-label={t('catalog')}>
-              {(['all', 'curated', 'discovered'] as const).map(mode => (
+              {(['all', 'curated', 'discovered', 'hot', 'daily'] as const).map(mode => (
                 <button
                   key={mode}
                   type="button"
@@ -238,7 +306,10 @@ export function SkillPlazaSection({ t, list, search, install, remove, refresh }:
                   aria-pressed={filter === mode}
                   onClick={() => { setFilter(mode) }}
                 >
-                  {t(mode === 'all' ? 'allTab' : mode === 'curated' ? 'curatedTab' : 'discoveredTab')}
+                  {t(mode === 'all' ? 'allTab'
+                    : mode === 'curated' ? 'curatedTab'
+                      : mode === 'discovered' ? 'discoveredTab'
+                        : mode === 'hot' ? 'hotTab' : 'dailyTab')}
                 </button>
               ))}
             </div>
@@ -268,11 +339,13 @@ export function SkillPlazaSection({ t, list, search, install, remove, refresh }:
               {online.entries.length === 0 ? (
                 <p className={css.status}>{t('noOnlineResults')}</p>
               ) : (
-                renderCards(online.entries, busy, t, handleInstall, handleRemove)
+                renderCards(online.entries, lang, busy, t, handleInstall, handleRemove)
               )}
             </div>
           ) : null}
-          {filteredEntries.length > 0 ? renderCards(filteredEntries, busy, t, handleInstall, handleRemove) : null}
+          {filteredEntries.length > 0
+            ? renderCards(filteredEntries, lang, busy, t, handleInstall, handleRemove)
+            : null}
         </div>
       ) : null}
     </div>
@@ -282,6 +355,7 @@ export function SkillPlazaSection({ t, list, search, install, remove, refresh }:
 /** Render one plaza card list; shared by the local catalog and GitHub online results. */
 function renderCards(
   entries: readonly PlazaSkillEntry[],
+  lang: PlazaLang,
   busy: ReadonlySet<string>,
   t: (key: SkillPlazaLocaleKey) => string,
   handleInstall: (entry: PlazaSkillEntry) => void,
@@ -291,7 +365,7 @@ function renderCards(
     <ul className={css.cards}>
       {entries.map((entry) => {
         const pending = busy.has(entry.id)
-        const name = displayName(entry)
+        const name = localizedName(entry, lang)
         return (
           <li className={css.card} key={entry.id} data-skill={entry.id}>
             <div className={css.cardMain}>
@@ -302,7 +376,7 @@ function renderCards(
                     {entry.source === 'curated' ? t('curatedTag') : t('discoveredTag')}
                   </span>
                 </div>
-                <p className={css.cardDescription}>{displayDescription(entry)}</p>
+                <p className={css.cardDescription}>{localizedDescription(entry, lang)}</p>
                 <div className={css.cardMeta}>
                   <span>{t('fromRepo').replace('{repo}', entry.repo)}</span>
                   {entry.stars !== undefined ? (

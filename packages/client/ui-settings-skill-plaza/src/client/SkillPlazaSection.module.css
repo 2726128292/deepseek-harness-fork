@@ -3,7 +3,7 @@
   flex-direction: column;
   gap: 14px;
   width: 100%;
-  max-width: 760px;
+  max-width: 960px;
   color: var(--dsw-alias-label-primary);
 }
 
@@ -67,6 +67,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .tabs {
@@ -75,6 +76,9 @@
   padding: 3px;
   border-radius: 8px;
   background: var(--dsw-alias-bg-layer-1);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .tab {
@@ -88,12 +92,40 @@
   font-size: 12px;
   line-height: 18px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .tab[data-active='true'] {
   background: var(--dsw-alias-bg-layer-3);
   color: var(--dsw-alias-label-primary);
   box-shadow: var(--dsw-shadow-lv1);
+}
+
+.langSwitch {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.langButton {
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 10px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.langButton[data-active='true'] {
+  background: var(--dsw-alias-state-business-primary);
+  color: var(--dsw-alias-label-primary-inverted);
 }
 
 .uninstalledOnly {
@@ -254,8 +286,9 @@
 }
 
 .cards {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 10px;
   margin: 0;
   padding: 0;
@@ -375,4 +408,52 @@
   clip: rect(0 0 0 0);
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* Small screens: single-column cards, stacking controls, touch-friendly targets. */
+@media (max-width: 680px) {
+  .cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
+  }
+
+  .search {
+    flex-basis: 100%;
+  }
+
+  .filterRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tabs {
+    width: 100%;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 0 6px;
+  }
+
+  .cardMain {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .cardTitleRow {
+    flex-wrap: wrap;
+  }
+
+  .install,
+  .githubSearch,
+  .refresh {
+    min-height: 38px;
+  }
+
+  .install {
+    width: 100%;
+  }
 }
